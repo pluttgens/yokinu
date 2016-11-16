@@ -1,0 +1,36 @@
+{
+  "kind": "sj#track",
+  "id": "90ae8deb-24ae-3ef6-abde-b91bd3909269",
+  "clientId": "n/sKVxzQTMFFyguwKXjU9g",
+  "creationTimestamp": "1471292979292155",
+  "lastModifiedTimestamp": "1471293237760758",
+  "recentTimestamp": "1471292979289000",
+  "deleted": false,
+  "title": "inside your heart (original ka",
+  "artist": "FictionJunction YUUKA",
+  "composer": "Yuki Kajiura",
+  "album": "inside your heart",
+  "albumArtist": "梶浦由記",
+  "year": 2004,
+  "comment": "",
+  "trackNumber": 3,
+  "genre": "Jpop, Anime",
+  "durationMillis": "256914",
+  "beatsPerMinute": 0,
+  "artistArtRef": [
+    {
+      "url": "http://lh3.googleusercontent.com/i-lLg8mcjmiZROcTzUL_xj_ktemjWOYdMUA5YY4CThhuRZAU7t8l_fcJHB2MPgRoTmF1GETUZg"
+    }
+  ],
+  "playCount": 0,
+  "totalTrackCount": 0,
+  "discNumber": 0,
+  "totalDiscCount": 0,
+  "rating": "0",
+  "estimatedSize": "10283271",
+  "albumId": "B6w2jn467pdymj4uszhojynhiee",
+  "artistId": [
+    "Asgra3gekcktk7de72p6cuqkk3i"
+  ],
+  "nid": "Tweci6dzqwdovoa5miawuvgmcwi"
+}

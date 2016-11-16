@@ -1,0 +1,50 @@
+{
+  "name": "yokinu",
+  "version": "0.0.1",
+  "description": "coming soon",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "test",
+    "dev": "nodemon -w . --harmony --exec \"babel-node .\"",
+    "build": "babel src -s -D -d dist ",
+    "start": "node dist --harmony",
+    "lint": "eslint ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GenjitsuGame/yokinu.git"
+  },
+  "author": "Pascal Luttgens <pascal.luttgens@hotmail.fr>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GenjitsuGame/yokinu/issues"
+  },
+  "homepage": "https://github.com/GenjitsuGame/yokinu#readme",
+  "dependencies": {
+    "babel-runtime": "^6.18.0",
+    "bluebird": "^3.4.6",
+    "body-parser": "^1.15.2",
+    "cors": "^2.8.1",
+    "dropbox": "^2.4.0",
+    "express": "^4.14.0",
+    "mkdirp": "^0.5.1",
+    "morgan": "^1.7.0",
+    "musicmetadata": "^2.0.4",
+    "nedb": "^1.8.0",
+    "node-snowflake": "git://github.com/genjitsugame/node-snowflake.git",
+    "playmusic": "^2.2.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.9.0",
+    "babel-core": "^6.9.0",
+    "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-preset-latest": "^6.16.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "eslint": "^3.9.1",
+    "eslint-config-semistandard": "^7.0.0",
+    "eslint-config-standard": "^6.2.1",
+    "eslint-plugin-promise": "^3.3.0",
+    "eslint-plugin-standard": "^2.0.1",
+    "nodemon": "^1.9.2"
+  }
+}

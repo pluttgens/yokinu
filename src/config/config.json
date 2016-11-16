@@ -1,0 +1,10 @@
+{
+  "gmusic": {
+    "email": "",
+    "password": ""
+  },
+  "dropbox": {
+    "token": "",
+    "directories": []
+  }
+}
