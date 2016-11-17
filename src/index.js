@@ -23,9 +23,6 @@ const routes = require('./core/routes/index');
     'dropbox'
   ];
 
-  let jonCheck = false;
-  if (modules.find(module => module == 'jon-check')) jonCheck = true;
-
   app.locals.streamProviders = {};
   const promises = [];
 
@@ -50,9 +47,9 @@ const routes = require('./core/routes/index');
 
   app.use(apiPrefix + '/library', routes.library);
 
-  if (jonCheck) {
-    app.use(app.use(), express.static(path.join(__dirname, '..', 'jon-check')))
-    app.use('*', (req, res) => res.send());
+  if (true || process.env.NODE_ENV === 'production') {
+    app.use('/static', express.static(path.join(__dirname, '..', 'jon-check', 'static')))
+    app.use('*', (req, res) => res.sendFile(path.join(__dirname, '..', 'jon-check', 'index.html')));
   }
 
   app.use((err, req, res, next) => {
