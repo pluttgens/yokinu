@@ -10,7 +10,7 @@
     "build": "babel src -s -D -d dist ",
     "start": "node dist --harmony",
     "lint": "eslint .",
-    "pm2": "pm2 start dist --name yokinu"
+    "pm2": "NODE_ENV=production PORT=80 pm2 start dist --name yokinu"
   },
   "repository": {
     "type": "git",
