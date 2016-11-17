@@ -23,28 +23,37 @@ const routes = require('./core/routes/index');
     'dropbox'
   ];
 
+  let jonCheck = false;
+  if (modules.find(module => module == 'jon-check')) jonCheck = true;
+
   app.locals.streamProviders = {};
   const promises = [];
 
   console.log('Loading modules...');
   for (let moduleName of modules) {
     let module = require('./modules/' + moduleName);
-    promises.push(module.load());
+    // promises.push(module.load());
     app.locals.streamProviders[moduleName] = module.getStream;
   }
 
   await Promise.all(promises);
   console.log('Modules loaded!');
 
-  const prefix = '/api';
+  const apiPrefix = '/api';
 
   app.locals.static = {
-    covers: prefix + '/static/covers'
+    covers: '/static/covers',
   };
 
-  app.use(app.locals.static.covers, express.static(path.join(__dirname, 'data', 'covers')));
+  app.use(app.locals.static.covers, express.static(path.join(__dirname, '..', 'data', 'covers')));
 
-  app.use(prefix + '/library', routes.library);
+
+  app.use(apiPrefix + '/library', routes.library);
+
+  if (jonCheck) {
+    app.use(app.use(), express.static(path.join(__dirname, '..', 'jon-check')))
+    app.use('*', (req, res) => res.send());
+  }
 
   app.use((err, req, res, next) => {
     console.log(err);

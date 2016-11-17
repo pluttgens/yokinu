@@ -1,5 +1,6 @@
 'use strict';
 
+const Promise = require('bluebird');
 const express = require('express');
 const router = express.Router();
 const db = require('../database/index');
@@ -7,15 +8,37 @@ const db = require('../database/index');
 router
   .route('/tracks')
   .get((req, res, next) => {
+    const skip = Number(req.query.skip);
+    const limit = Number(req.query.limit);
+    const q = req.query.q;
+
+    if (skip && (skip | 0) !== skip) return res.status(400).json({
+      error: 'skip must be an integer.'
+    });
+    
+    if (limit && (limit | 0) !== limit) return res.status(400).json({
+      error: 'limit must be an integer.'
+    });
+
     (async () => {
-      const tracks = await db.Track.findAsync({});
-      res.json(tracks.map(track => {
-        if (!track.covers) return track;
-        track.covers = track.covers.map(cover => {
-          return req.app.locals.static.covers + '/' + cover;
-        });
-        return track;
-      }));
+      let find = q ? createFindTracksQuery(q) : {};
+      console.log(find)
+      const query = db.Track.find(find).skip(skip).limit(limit);
+      const tracksP = Promise.promisify(query.exec, {context: query})();
+      const countP = db.Track.countAsync({});
+      const tracks = await tracksP;
+      const count = await countP;
+
+      res.json({
+        data: tracks.map(track => {
+          if (!track.covers) return track;
+          track.covers = track.covers.map(cover => {
+            return req.app.locals.static.covers + '/' + cover;
+          });
+          return track;
+        }),
+        next: createCursor(skip, tracks.length, count)
+      });
     })().catch(next);
   });
 
@@ -37,5 +60,25 @@ router
       stream.pipe(res);
     })().catch(next);
   });
+
+function createCursor(skip, fetched, count) {
+  if (!fetched || !count) return;
+  let lastElem = fetched;
+  if (skip) lastElem += skip;
+  if (lastElem >= count) return;
+  return lastElem;
+}
+
+function createFindTracksQuery(q) {
+  const or = [];
+  or.push({title: regexify(q)});
+  or.push({artist: regexify(q)});
+  or.push({album: regexify(q)});
+  return {$or: or};
+}
+
+function regexify(q) {
+  return  new RegExp(q, 'i');
+}
 
 module.exports = router;
