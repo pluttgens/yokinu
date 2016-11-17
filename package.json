@@ -6,10 +6,11 @@
   "scripts": {
     "test": "test",
     "dev": "nodemon -w . --harmony --exec \"babel-node .\"",
+    "dev-prod": "NODE_ENV=production nodemon -w . --harmony --exec \"babel-node .\"",
     "build": "babel src -s -D -d dist ",
     "start": "node dist --harmony",
     "lint": "eslint .",
-    "pm2": "pm2 start dist"
+    "pm2": "pm2 start dist --name yokinu"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
     "cors": "^2.8.1",
     "dropbox": "^2.4.0",
     "express": "^4.14.0",
+    "http-delayed-response": "^0.0.4",
     "mkdirp": "^0.5.1",
     "morgan": "^1.7.0",
     "musicmetadata": "^2.0.4",

@@ -18,23 +18,21 @@ const routes = require('./core/routes/index');
   app.use(bodyParser.urlencoded({extended: false}));
   app.use(cors());
 
-  const modules = [
+  const services = [
     // 'gmusic',
     'dropbox'
   ];
 
-  app.locals.streamProviders = {};
+  app.locals.services = {};
   const promises = [];
 
-  console.log('Loading modules...');
-  for (let moduleName of modules) {
-    let module = require('./modules/' + moduleName);
-    // promises.push(module.load());
-    app.locals.streamProviders[moduleName] = module.getStream;
+  console.log('Loading services...');
+  for (let serviceName of services) {
+    app.locals.services[serviceName] = require('./modules/' + serviceName);
   }
 
   await Promise.all(promises);
-  console.log('Modules loaded!');
+  console.log('Services loaded!');
 
   const apiPrefix = '/api';
 
@@ -44,8 +42,8 @@ const routes = require('./core/routes/index');
 
   app.use(app.locals.static.covers, express.static(path.join(__dirname, '..', 'data', 'covers')));
 
-
-  app.use(apiPrefix + '/library', routes.library);
+  app.use(apiPrefix + '/services', routes.services);
+  app.use(apiPrefix + '/tracks', routes.tracks);
 
   if (process.env.NODE_ENV === 'production') {
     app.use('/static', express.static(path.join(__dirname, '..', 'jon-check', 'static')))

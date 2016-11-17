@@ -6,7 +6,7 @@ const router = express.Router();
 const db = require('../database/index');
 
 router
-  .route('/tracks')
+  .route('/')
   .get((req, res, next) => {
     const skip = Number(req.query.skip);
     const limit = Number(req.query.limit);
@@ -43,7 +43,7 @@ router
   });
 
 router
-  .route('/tracks/:id')
+  .route('/:id')
   .get((req, res, next) => {
     const id = req.params.id;
     (async () => {
@@ -52,7 +52,7 @@ router
       });
 
       if (!track) return res.status(404).json({error: 'Track not found.'});
-      const stream = await req.app.locals.streamProviders[track.service](track.path);
+      const stream = await req.app.locals.services[track.service].getStream(track.path);
       if (!stream) return res.sendStatus(504);
       res.set('accept-ranges', 'bytes');
       res.set('content-type', 'audio/mpeg');

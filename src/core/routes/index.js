@@ -1,5 +1,6 @@
 'use strict';
 
 module.exports = {
-  library: require('./library')
+  services: require('./services'),
+  tracks: require('./tracks')
 };

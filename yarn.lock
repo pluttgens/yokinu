@@ -1725,6 +1725,10 @@ home-or-tmp@^2.0.0:
     os-homedir "^1.0.0"
     os-tmpdir "^1.0.1"
 
+http-delayed-response:
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/http-delayed-response/-/http-delayed-response-0.0.4.tgz#6ffabdb055faa4fdb39d0de7d28cfdbffbb4920b"
+
 http-errors@~1.5.0:
   version "1.5.0"
   resolved "https://registry.yarnpkg.com/http-errors/-/http-errors-1.5.0.tgz#b1cb3d8260fd8e2386cad3189045943372d48211"
