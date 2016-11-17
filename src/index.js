@@ -47,7 +47,7 @@ const routes = require('./core/routes/index');
 
   app.use(apiPrefix + '/library', routes.library);
 
-  if (true || process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production') {
     app.use('/static', express.static(path.join(__dirname, '..', 'jon-check', 'static')))
     app.use('*', (req, res) => res.sendFile(path.join(__dirname, '..', 'jon-check', 'index.html')));
   }
