@@ -14,14 +14,18 @@ router
     if (!module) return res.status(404).json({
       error: 'No service found for : ' + serviceName + '.'
     });
-    (async () => {
-      await module.load().catch(err => {
+
+    module
+      .load()
+      .then(() => {
+        delayed.end({
+          message: 'service ' + serviceName + ' loaded!'
+        });
+      })
+      .catch(err => {
         console.log(err);
+        next(err);
       });
-      delayed.end({
-        message: 'service ' + serviceName + ' loaded!'
-      });
-    })().catch(next);
   });
 
 module.exports = router;

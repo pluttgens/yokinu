@@ -13,14 +13,12 @@ Promise.promisifyAll(pm);
 const config = _config.gmusic;
 if (!config) throw new Error('No config found for module : gmusic');
 
-
 (async () => {
   await pm.initAsync({
     email: config.email,
-    password: config.password,
-    masterToken: config.masterToken
+    password: config.password
   });
-})().catch(console.log.bind(console));
+})().then(console.log.bind(console)).catch(console.log.bind(console));
 
 module.exports.load = async () => {
   const LIMIT = 0; // temporary constant to avoid fetching too much data.
@@ -29,8 +27,7 @@ module.exports.load = async () => {
   const playlists = await fetchPlayLists();
   const playlistTracks = await fetchPlayListEntries(null, 0);
   const favorites = await pm.getFavoritesAsync();
-
-  console.log(favorites);
+  //console.log(favorites);
 
   tracks.forEach(track => {
     (async () => {
