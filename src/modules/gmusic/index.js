@@ -21,7 +21,7 @@ if (!config) throw new Error('No config found for module : gmusic');
 })().then(console.log.bind(console)).catch(console.log.bind(console));
 
 module.exports.load = async () => {
-  const LIMIT = 0; // temporary constant to avoid fetching too much data.
+  const LIMIT = -1; // temporary constant to avoid fetching too much data.
 
   const tracks = await fetchTracks(null, 0);
   const playlists = await fetchPlayLists();
