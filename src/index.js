@@ -19,8 +19,8 @@ const routes = require('./core/routes/index');
   app.use(cors());
 
   const services = [
-    // 'gmusic',
-    'dropbox'
+    'gmusic',
+    // 'dropbox'
   ];
 
   app.locals.services = {};
@@ -42,13 +42,9 @@ const routes = require('./core/routes/index');
 
   app.use(app.locals.static.covers, express.static(path.join(__dirname, '..', 'data', 'covers')));
 
+  app.use(apiPrefix + '/playlists', routes.playlists);
   app.use(apiPrefix + '/services', routes.services);
   app.use(apiPrefix + '/tracks', routes.tracks);
-
-  if (process.env.NODE_ENV === 'production') {
-    app.use('/static', express.static(path.join(__dirname, '..', 'jon-check', 'static')))
-    app.use('*', (req, res) => res.sendFile(path.join(__dirname, '..', 'jon-check', 'index.html')));
-  }
 
   app.use((err, req, res, next) => {
     console.log(err);

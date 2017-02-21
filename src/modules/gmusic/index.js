@@ -2,46 +2,101 @@
 
 const _config = require('../../config');
 const express = require('express');
-const Library = require('./library');
+const db = require('../../core/database');
+const PlayMusic = require('playmusic');
+const Promise = require('bluebird');
+const pm = new PlayMusic();
 
-const router = express.Router();
+Promise.promisifyAll(pm);
 
 // config will be passed to the module later
 const config = _config.gmusic;
 if (!config) throw new Error('No config found for module : gmusic');
 
-const library = new Library()
-  .init({
+
+(async () => {
+  await pm.initAsync({
     email: config.email,
-    password: config.password
+    password: config.password,
+    masterToken: config.masterToken
+  });
+})().catch(console.log.bind(console));
+
+module.exports.load = async () => {
+  const LIMIT = 0; // temporary constant to avoid fetching too much data.
+
+  const tracks = await fetchTracks(null, 0);
+  const playlists = await fetchPlayLists();
+  const playlistTracks = await fetchPlayListEntries(null, 0);
+  const favorites = await pm.getFavoritesAsync();
+
+  console.log(favorites);
+
+  tracks.forEach(track => {
+    (async () => {
+      if (await db.Track.findOne({
+          service: 'gmusic',
+          path: track.id
+        })) return null;
+
+      let playlistsWithTrack = [];
+      const playlistTrack = playlistTracks.find(playlistTrack => playlistTrack.trackId === track.id);
+      if (playlistTrack) {
+        //console.log(playlistTrack);
+        playlistsWithTrack = playlists
+          .filter(playlist => playlist.id == playlistTrack.playlistId)
+          .map(playlist => ({
+            service: 'gmusic',
+            name: playlist.name
+          }));
+        //console.log(playlistsWithTrack);
+      }
+
+      await db.Track.create({
+        path: track.id,
+        title: track.title,
+        artist: track.artist || track.albumArtist,
+        album: track.album,
+        duration: track.durationMillis,
+        size: track.estimatedSize,
+        genres: track.genre.split(','),
+        covers: track.artistArtRef ? track.artistArtRef.map(ref => ({
+            type: 'web',
+            path: ref.url
+          })) : null,
+        track: {
+          n: track.trackNumber,
+          of: track.totalTrackCount
+        },
+        disk: {
+          n: track.discNumber,
+          of: track.totalDiscCount
+        },
+        service: 'gmusic',
+        playlists: playlistsWithTrack
+      });
+    })();
   });
 
-router
-  .get('/tracks', (req, res, next) => {
-    library
-      .then(library => res.status(200).json(library.tracks))
-      .catch(next);
-  });
+  async function fetchTracks (token, i) {
+    if (i === LIMIT) return [];
+    let tracksData = await pm.getAllTracksAsync({nextPageToken: token});
+    if (!tracksData.nextPageToken) return tracksData.data.items;
+    return tracksData.data.items.concat(await fetchTracks(tracksData.nextPageToken, ++i));
+  }
 
-router
-  .get('/tracks/:id', (req, res, next) => {
-    library
-      .then(async library => {
-        var stream = await library.getStream(req.params.id);
-        if (!stream) return res.sendStatus(404);
-        res.set('accept-ranges', stream.headers['accept-ranges']);
-        res.set('content-type', stream.headers['content-type']);
-        res.set('content-length', stream.headers['content-length']);
-        stream.pipe(res);
-      })
-      .catch(next);
-  });
+  async function fetchPlayLists () {
+    return (await pm.getPlayListsAsync()).data.items;
+  }
 
-router
-  .get('/playlists', (req, res, next) => {
-    library
-      .then(library => res.json(library.playLists))
-      .catch(next);
-  });
+  async function fetchPlayListEntries (token, i) {
+    if (i === LIMIT) return [];
+    let playListEntriesData = await pm.getPlayListEntriesAsync({nextPageToken: token});
+    if (!playListEntriesData.nextPageToken) return playListEntriesData.data.items;
+    return playListEntriesData.data.items.concat(await fetchTracks(playListEntriesData.nextPageToken, ++i));
+  }
+};
 
-export default router;
+module.exports.getStream = async (path) => {
+  return pm.getStreamAsync(path);
+};

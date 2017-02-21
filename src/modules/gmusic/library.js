@@ -5,21 +5,46 @@ const Promise = require('bluebird');
 const Track = require('./track');
 const PlayList = require('./playlist');
 const pm = new PlayMusic();
+const db = require('../../core/database');
 
-Promise.promisifyAll(pm);
 
 const LIMIT = 3; // temporary constant to avoid fetching too much data.
 
-export default class Library {
+class Library {
   constructor () {
-    this.tracks = {};
-    this.playLists = {};
   }
 
   async init (credentials) {
     await pm.initAsync(credentials);
     await this.refresh();
     return this;
+  }
+
+  async load () {
+    let tracks = await fetchTracks();
+    tracks.foreach(track => {
+      db.Track.create({
+        path: track.id,
+        title: track.title,
+        artist: track.artist || track.albumArtist,
+        album: track.album,
+        duration: track.durationMillis,
+        size: track.estimatedSize,
+        genres: track.genre.split(','),
+        covers: track.artistArtRef.map(ref => ({
+          type: 'web',
+          path: ref.url
+        })),
+        track: {
+          n: track.trackNumber,
+          of: track.totalTrackCount
+        },
+        disk: {
+          n: track.discNumber,
+          of: track.totalDiscCount
+        }
+      })
+    })
   }
 
   async refresh () {
@@ -49,7 +74,7 @@ export default class Library {
 
 async function fetchTracks (token, i) {
   if (i === LIMIT) return [];
-  var tracksData = await pm.getAllTracksAsync({nextPageToken: token});
+  let tracksData = await pm.getAllTracksAsync({nextPageToken: token});
   if (!tracksData.nextPageToken) return tracksData.data.items;
   return tracksData.data.items.concat(await fetchTracks(tracksData.nextPageToken, ++i));
 }

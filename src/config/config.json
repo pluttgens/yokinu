@@ -1,10 +1,13 @@
 {
   "gmusic": {
     "email": "",
-    "password": ""
+    "password": "",
+    "androidId": "",
+    "masterToken": ""
   },
   "dropbox": {
     "token": "",
-    "directories": []
+    "directories": [
+    ]
   }
 }

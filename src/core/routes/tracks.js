@@ -15,19 +15,19 @@ router
     if (skip && (skip | 0) !== skip) return res.status(400).json({
       error: 'skip must be an integer.'
     });
-    
+
     if (limit && (limit | 0) !== limit) return res.status(400).json({
       error: 'limit must be an integer.'
     });
 
     (async () => {
       let find = q ? createFindTracksQuery(q) : {};
-      console.log(find)
-      const query = db.Track.find(find).skip(skip).limit(limit);
-      const tracksP = Promise.promisify(query.exec, {context: query})();
-      const countP = db.Track.countAsync({});
-      const tracks = await tracksP;
-      const count = await countP;
+      const tracksP = db.Track.find(find).skip(skip).limit(limit);
+      const countP = db.Track.count({});
+      const tracks = await
+        tracksP;
+      const count = await
+        countP;
 
       res.json({
         data: tracks.map(track => {
@@ -43,13 +43,13 @@ router
   });
 
 router
-  .route('/:id')
+  .route('/:id/stream')
   .get((req, res, next) => {
     const id = req.params.id;
     (async () => {
-      const track = await db.Track.findOneAsync({
+      const track = await db.Track.findById({
         _id: id
-      });
+      }).exec();
 
       if (!track) return res.status(404).json({error: 'Track not found.'});
       const stream = await req.app.locals.services[track.service].getStream(track.path);
@@ -61,7 +61,7 @@ router
     })().catch(next);
   });
 
-function createCursor(skip, fetched, count) {
+function createCursor (skip, fetched, count) {
   if (!fetched || !count) return;
   let lastElem = fetched;
   if (skip) lastElem += skip;
@@ -69,7 +69,7 @@ function createCursor(skip, fetched, count) {
   return lastElem;
 }
 
-function createFindTracksQuery(q) {
+function createFindTracksQuery (q) {
   const or = [];
   or.push({title: regexify(q)});
   or.push({artist: regexify(q)});
@@ -77,8 +77,8 @@ function createFindTracksQuery(q) {
   return {$or: or};
 }
 
-function regexify(q) {
-  return  new RegExp(q, 'i');
+function regexify (q) {
+  return new RegExp(q, 'i');
 }
 
 module.exports = router;

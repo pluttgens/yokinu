@@ -7,4 +7,4 @@ module.exports = class PlayList {
     this.owner = gPlayList.ownerName;
     this.tracks = [];
   }
-}
+};

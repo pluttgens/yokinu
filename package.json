@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "test",
-    "dev": "nodemon -w . --harmony --exec \"babel-node .\"",
+    "dev": "docker-compose up",
     "dev-prod": "NODE_ENV=production nodemon -w . --harmony --exec \"babel-node .\"",
     "build": "babel src -s -D -d dist ",
     "start": "node dist --harmony",
@@ -31,6 +31,7 @@
     "express": "^4.14.0",
     "http-delayed-response": "^0.0.4",
     "mkdirp": "^0.5.1",
+    "mongoose": "^4.7.7",
     "morgan": "^1.7.0",
     "musicmetadata": "^2.0.4",
     "nedb": "^1.8.0",

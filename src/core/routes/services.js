@@ -15,7 +15,9 @@ router
       error: 'No service found for : ' + serviceName + '.'
     });
     (async () => {
-      await module.load()
+      await module.load().catch(err => {
+        console.log(err);
+      });
       delayed.end({
         message: 'service ' + serviceName + ' loaded!'
       });

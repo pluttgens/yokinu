@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  yknmongodb:
+    restart: always
+    image: mongo:latest
+    ports:
+      - "27020:27017"
+    volumes:
+      - ykn-mongodb-data:/data/db
+  yknserver:
+    restart: always
+    build: .
+    image: ykn/server:dev
+    ports:
+      - 4100:4100
+    links:
+      - yknmongodb:mongodb
+    volumes:
+      - ./src:/usr/src/ykn/src
+volumes:
+  ykn-mongodb-data:
+    driver: local
