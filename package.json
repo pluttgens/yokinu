@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "test",
-    "dev": "docker-compose up",
+    "dev": "nodemon -w . --harmony --exec \"babel-node .\"",
     "dev-prod": "NODE_ENV=production nodemon -w . --harmony --exec \"babel-node .\"",
     "build": "babel src -s -D -d dist ",
     "start": "node dist --harmony",

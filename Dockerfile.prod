@@ -4,13 +4,15 @@ MAINTAINER pascal.luttgens@hotmail.fr
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git
 
-RUN mkdir -p /usr/src/ykn
+RUN mkdir -p /usr/src/ykn /usr/src/ykn/src
 WORKDIR /usr/src/ykn
 
 COPY package.json .
-RUN npm i
-COPY src .
+RUN npm i --dev
+COPY src src
+COPY .babelrc .
+RUN npm run build
 
 EXPOSE 4100
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]
