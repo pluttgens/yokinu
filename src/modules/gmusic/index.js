@@ -18,7 +18,7 @@ if (!config) throw new Error('No config found for module : gmusic');
     email: config.email,
     password: config.password
   });
-})().then(console.log.bind(console)).catch(console.log.bind(console));
+})().catch(console.log.bind(console));
 
 module.exports.load = async () => {
   const LIMIT = -1; // temporary constant to avoid fetching too much data.

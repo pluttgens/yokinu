@@ -1,6 +1,6 @@
 'use strict';
 
-const Promise = require('bluebird');
+const config = require('../../config').yokinu;
 const express = require('express');
 const router = express.Router();
 const db = require('../database/index');
@@ -8,8 +8,8 @@ const db = require('../database/index');
 router
   .route('/')
   .get((req, res, next) => {
-    const skip = Number(req.query.skip);
-    const limit = Number(req.query.limit);
+    let skip = req.query.skip;
+    let limit = req.query.limit;
     const q = req.query.q;
 
     if (skip && (skip | 0) !== skip) return res.status(400).json({
@@ -19,6 +19,9 @@ router
     if (limit && (limit | 0) !== limit) return res.status(400).json({
       error: 'limit must be an integer.'
     });
+
+    skip = Number(skip) || 0;
+    limit = Math.min(Number(limit) || config.low_memory ? 100 : 1000, config.low_memory ? 100 : 1000);
 
     (async () => {
       let find = q ? createFindTracksQuery(q) : {};
@@ -30,14 +33,15 @@ router
         countP;
 
       res.json({
+        length: tracks.length,
+        next: createCursor(skip, tracks.length, count),
         data: tracks.map(track => {
           if (!track.covers) return track;
           track.covers = track.covers.map(cover => {
             return req.app.locals.static.covers + '/' + cover;
           });
           return track;
-        }),
-        next: createCursor(skip, tracks.length, count)
+        })
       });
     })().catch(next);
   });
