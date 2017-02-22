@@ -9,5 +9,8 @@
     "token": "",
     "directories": [
     ]
+  },
+  "yokinu": {
+    "low_memory": ""
   }
 }

@@ -8,7 +8,7 @@ RUN mkdir -p /usr/src/ykn /usr/src/ykn/src
 WORKDIR /usr/src/ykn
 
 COPY package.json .
-RUN npm i --dev
+RUN npm i
 COPY src src
 COPY .babelrc .
 RUN npm run build

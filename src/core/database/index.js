@@ -1,11 +1,13 @@
 'use strict';
 
+const config = require('../../config').yokinu;
 const mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
 
 const options = {
   server: {
     auto_reconnect: true,
+    poolSize: config.low_memory ? 1 : 5,
     socketOptions: {
       keepAlive: 1,
       connectTimeoutMS: 300000
