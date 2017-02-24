@@ -12,16 +12,25 @@ router
     let limit = req.query.limit;
     const q = req.query.q;
 
-    if (skip && (skip | 0) !== skip) return res.status(400).json({
+    function isInteger(i) {
+      if (!i) return false;
+      if (isNaN(i)) return false;
+      i = Number(i);
+      return i | 0 === i;
+    }
+
+    if (skip && !isInteger(skip)) return res.status(400).json({
       error: 'skip must be an integer.'
     });
 
-    if (limit && (limit | 0) !== limit) return res.status(400).json({
+    if (limit && !isInteger(limit)) return res.status(400).json({
       error: 'limit must be an integer.'
     });
 
     skip = Number(skip) || 0;
-    limit = Math.min(Number(limit) || config.low_memory ? 100 : 1000, config.low_memory ? 100 : 1000);
+    limit = Math.min(Number(limit), config.low_memory ? 100 : 1000, config.low_memory ? 100 : 1000);
+
+    console.log(limit);
 
     (async () => {
       let find = q ? createFindTracksQuery(q) : {};
