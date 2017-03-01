@@ -36,7 +36,8 @@
     "musicmetadata": "^2.0.4",
     "nedb": "^1.8.0",
     "node-snowflake": "git://github.com/genjitsugame/node-snowflake.git",
-    "playmusic": "^2.2.0"
+    "playmusic": "^2.2.0",
+    "validator": "^7.0.0"
   },
   "devDependencies": {
     "babel-cli": "^6.9.0",

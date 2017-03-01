@@ -4,6 +4,7 @@ const config = require('../../config').yokinu;
 const express = require('express');
 const router = express.Router();
 const db = require('../database/index');
+const validator = require('validator');
 
 router
   .route('/')
@@ -59,6 +60,13 @@ router
   .route('/:id/stream')
   .get((req, res, next) => {
     const id = req.params.id;
+
+    if (!validator.isMongoId(id)) {
+        return res.status(400).json({
+          message: 'invalid id format.'
+        })
+    }
+
     (async () => {
       const track = await db.Track.findById({
         _id: id
