@@ -5,7 +5,7 @@ services:
     restart: always
     image: mongo:latest
     ports:
-      - "27117:27017"
+      - "27118:27017"
     volumes:
       - ykn-mongodb-data:/data/db
   yknserver:

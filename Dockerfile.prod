@@ -13,6 +13,6 @@ COPY src src
 COPY .babelrc .
 RUN npm run build
 
-EXPOSE 4100
+EXPOSE 4101
 
 CMD ["npm", "run", "start"]
