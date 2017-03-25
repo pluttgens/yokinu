@@ -17,19 +17,26 @@ const trackSchema = mongoose.Schema({
   },
   genres: [String],
   covers: [{
-    type: {type: String, enum: ['web', 'local']},
+    type: { type: String, enum: ['web', 'local'] },
     path: String
   }],
   size: Number,
-  service: {type: String, required: true},
-  path: {type: String, required: true, unique: true},
+  service: { type: String, required: true },
+  path: { type: String, required: true, unique: true },
   playlists: [{
     name: String,
-    service: {type: String, required: true}
+    service: { type: String, required: true }
   }]
 });
 
-trackSchema.index({ service: 1, path: 1}, {unique: true});
+trackSchema.index({ service: 1, path: 1 }, { unique: true });
+trackSchema.index({ title: 'text', artist: 'text', album: 'text' }, {
+  weights: {
+    title: 5,
+    artist: 3,
+    album: 2
+  }
+});
 
 module.exports = {
   model: mongoose.model('Track', trackSchema),

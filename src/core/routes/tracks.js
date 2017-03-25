@@ -13,13 +13,6 @@ router
     let limit = req.query.limit;
     const q = req.query.q;
 
-    function isInteger(i) {
-      if (!i) return false;
-      if (isNaN(i)) return false;
-      i = Number(i);
-      return i | 0 === i;
-    }
-
     if (skip && !isInteger(skip)) return res.status(400).json({
       error: 'skip must be an integer.'
     });
@@ -29,30 +22,97 @@ router
     });
 
     skip = Number(skip) || 0;
-    limit = Math.min(Number(limit), config.low_memory ? 100 : 1000, config.low_memory ? 100 : 1000);
-
-    console.log(limit);
+    limit = Math.min(Number(limit), config.low_memory ? 100 : 1000);
 
     (async () => {
-      let find = q ? createFindTracksQuery(q) : {};
-      const tracksP = db.Track.find(find).skip(skip).limit(limit);
+      const tracksP = db.Track
+        .find({ $text: { $search: q } },
+          { score: { $meta: "textScore" } })
+        .sort({ score: { $meta: "textScore" } })
+        .skip(skip)
+        .limit(limit);
       const countP = db.Track.count({});
-      const tracks = await
-        tracksP;
-      const count = await
-        countP;
+      const tracks = await tracksP;
+      const count = await countP;
 
-      res.json({
+      console.log(mapCovers(tracks));
+      return res.json({
         length: tracks.length,
         next: createCursor(skip, tracks.length, count),
-        data: tracks.map(track => {
-          if (!track.covers) return track;
-          track.covers = track.covers.map(cover => {
-            return req.app.locals.static.covers + '/' + cover;
-          });
-          return track;
-        })
+        data: mapCovers(tracks)
       });
+    })().catch(next);
+  });
+
+router
+  .route('/:id')
+  .get((req, res, next) => {
+    const id = req.params.id;
+
+    if (!validator.isMongoId(id)) {
+      return res.status(400).json({
+        error: 'invalid id format.'
+      })
+    }
+
+    (async () => {
+      const track = await db.Track.findById({
+        _id: id
+      }).exec();
+
+      if (!track) return res.status(404).json({ error: 'Track not found.' });
+
+      return res.json({
+        length: 1,
+        data: mapCovers([track])[0]
+      })
+    })().catch(next);
+  });
+
+router
+  .route('/:id')
+  .get((req, res, next) => {
+    const id = req.params.id;
+
+    if (!validator.isMongoId(id)) {
+      return res.status(400).json({
+        error: 'invalid id format.'
+      })
+    }
+
+    (async () => {
+      return res.json({
+        data: await db.Track.findById(id)
+      });
+    })().catch(next);
+  });
+
+
+router
+  .route('/bulk_get')
+  .post((req, res, next) => {
+    const ids = req.body.ids;
+
+    (async () => {
+      const data = ids.map(id => {
+        return (async () => {
+          if (!validator.isMongoId(id)) return Promise.reject('invalid id format.');
+          return db.Track.findById(id);
+        })();
+      });
+
+      return Promise
+        .all(data)
+        .then(data => {
+          return res.json({
+            data: data
+          });
+        })
+        .catch(err => {
+          return res.status(400).json({
+            error: 'invalid id format'
+          })
+        });
     })().catch(next);
   });
 
@@ -62,9 +122,9 @@ router
     const id = req.params.id;
 
     if (!validator.isMongoId(id)) {
-        return res.status(400).json({
-          message: 'invalid id format.'
-        })
+      return res.status(400).json({
+        error: 'invalid id format.'
+      })
     }
 
     (async () => {
@@ -72,7 +132,7 @@ router
         _id: id
       }).exec();
 
-      if (!track) return res.status(404).json({error: 'Track not found.'});
+      if (!track) return res.status(404).json({ error: 'Track not found.' });
       const stream = await req.app.locals.services[track.service].getStream(track.path);
       if (!stream) return res.sendStatus(504);
       res.set('accept-ranges', 'bytes');
@@ -90,16 +150,23 @@ function createCursor (skip, fetched, count) {
   return lastElem;
 }
 
-function createFindTracksQuery (q) {
-  const or = [];
-  or.push({title: regexify(q)});
-  or.push({artist: regexify(q)});
-  or.push({album: regexify(q)});
-  return {$or: or};
+function mapCovers (tracks) {
+  return tracks.map(track => {
+    if (!track.covers) return track;
+    track.covers = track.covers.map(cover => {
+      if (cover.type === 'local')
+        return req.app.locals.static.covers + '/' + cover;
+      return cover;
+    });
+    return track;
+  });
 }
 
-function regexify (q) {
-  return new RegExp(q, 'i');
+function isInteger (i) {
+  if (!i) return false;
+  if (isNaN(i)) return false;
+  i = Number(i);
+  return i | 0 === i;
 }
 
 module.exports = router;

@@ -48,7 +48,7 @@ const routes = require('./core/routes/index');
 
   app.use((err, req, res, next) => {
     console.log(err);
-    res.send(err.stack);
+    res.send(err.stack || err);
   });
 
   const port = process.env.PORT || 4100;

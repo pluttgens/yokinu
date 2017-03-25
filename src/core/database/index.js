@@ -25,6 +25,7 @@ process.on('SIGINT', function () {
 });
 
 module.exports  = {
+  Playlist: require('./models/playlist').model,
   Track: require('./models/track').model,
   User: require('./models/user').model
 };

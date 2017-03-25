@@ -18,13 +18,13 @@ router
     module
       .load()
       .then(() => {
-        delayed.end({
+        delayed.end(undefined, {
           message: 'service ' + serviceName + ' loaded!'
         });
       })
       .catch(err => {
         console.log(err);
-        next(err);
+        delayed.end(err);
       });
   });
 

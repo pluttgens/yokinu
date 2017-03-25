@@ -13,6 +13,8 @@ Promise.promisifyAll(pm);
 const config = _config.gmusic;
 if (!config) throw new Error('No config found for module : gmusic');
 
+const service = 'gmusic';
+
 (async () => {
   await pm.initAsync({
     email: config.email,
@@ -21,19 +23,36 @@ if (!config) throw new Error('No config found for module : gmusic');
 })().catch(console.log.bind(console));
 
 module.exports.load = async () => {
-  const LIMIT = -1; // temporary constant to avoid fetching too much data.
+   // temporary constant to avoid fetching too much data.
 
+  const LIMIT = -1;
   const tracks = await fetchTracks(null, 0);
   const playlists = await fetchPlayLists();
   const playlistTracks = await fetchPlayListEntries(null, 0);
   const favorites = await pm.getFavoritesAsync();
   //console.log(favorites);
 
+  const promises = [];
+
+  playlists.forEach(playlist => {
+    promises.push((async () => {
+      if (await db.Playlist.findOne({
+          name: playlist.name,
+          service: service
+        })) return null;
+
+        return db.Playlist.create({
+          name: playlist.name,
+          service: service
+        });
+    })().catch(console.log.bind(console)));
+  });
+
   tracks.forEach(track => {
-    (async () => {
+    promises.push((async () => {
       if (await db.Track.findOne({
-          service: 'gmusic',
-          path: track.id
+          service: service,
+          path: track.storeId || track.id
         })) return null;
 
       let playlistsWithTrack = [];
@@ -43,14 +62,14 @@ module.exports.load = async () => {
         playlistsWithTrack = playlists
           .filter(playlist => playlist.id == playlistTrack.playlistId)
           .map(playlist => ({
-            service: 'gmusic',
+            service: service,
             name: playlist.name
           }));
         //console.log(playlistsWithTrack);
       }
 
-      await db.Track.create({
-        path: track.id,
+      return db.Track.create({
+        path: track.storeId || track.id,
         title: track.title,
         artist: track.artist || track.albumArtist,
         album: track.album,
@@ -72,12 +91,17 @@ module.exports.load = async () => {
         service: 'gmusic',
         playlists: playlistsWithTrack
       });
-    })();
+    })().catch(err => {
+      console.log(track);
+      //console.log(err);
+    }));
   });
+
+  return Promise.all(promises);
 
   async function fetchTracks (token, i) {
     if (i === LIMIT) return [];
-    let tracksData = await pm.getAllTracksAsync({nextPageToken: token});
+    let tracksData = await pm.getAllTracksAsync({ nextPageToken: token });
     if (!tracksData.nextPageToken) return tracksData.data.items;
     return tracksData.data.items.concat(await fetchTracks(tracksData.nextPageToken, ++i));
   }
@@ -88,11 +112,12 @@ module.exports.load = async () => {
 
   async function fetchPlayListEntries (token, i) {
     if (i === LIMIT) return [];
-    let playListEntriesData = await pm.getPlayListEntriesAsync({nextPageToken: token});
+    let playListEntriesData = await pm.getPlayListEntriesAsync({ nextPageToken: token });
     if (!playListEntriesData.nextPageToken) return playListEntriesData.data.items;
     return playListEntriesData.data.items.concat(await fetchTracks(playListEntriesData.nextPageToken, ++i));
   }
 };
+
 
 module.exports.getStream = async (path) => {
   return pm.getStreamAsync(path);
