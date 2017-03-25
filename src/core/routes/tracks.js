@@ -25,12 +25,16 @@ router
     limit = Math.min(Number(limit), config.low_memory ? 100 : 1000);
 
     (async () => {
-      const tracksP = db.Track
-        .find({ $text: { $search: q } },
-          { score: { $meta: "textScore" } })
-        .sort({ score: { $meta: "textScore" } })
-        .skip(skip)
-        .limit(limit);
+      const tracksP = q ?
+        db.Track
+          .find({ $text: { $search: q } },
+            { score: { $meta: "textScore" } })
+          .sort({ score: { $meta: "textScore" } })
+          .skip(skip)
+          .limit(limit) :
+        db.Track.find({})
+          .skip(skip)
+          .limit(limit);
       const countP = db.Track.count({});
       const tracks = await tracksP;
       const count = await countP;
