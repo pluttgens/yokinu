@@ -39,7 +39,6 @@ router
       const tracks = await tracksP;
       const count = await countP;
 
-      console.log(mapCovers(tracks));
       return res.json({
         length: tracks.length,
         next: createCursor(skip, tracks.length, count),
