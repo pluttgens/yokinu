@@ -23,14 +23,15 @@ const service = 'gmusic';
 })().catch(console.log.bind(console));
 
 module.exports.load = async () => {
-   // temporary constant to avoid fetching too much data.
+  // temporary constant to avoid fetching too much data.
 
-  const LIMIT = -1;
+  const LIMIT = 1;
   const tracks = await fetchTracks(null, 0);
   const playlists = await fetchPlayLists();
   const playlistTracks = await fetchPlayListEntries(null, 0);
   const favorites = await pm.getFavoritesAsync();
   //console.log(favorites);
+
 
   const promises = [];
 
@@ -41,10 +42,10 @@ module.exports.load = async () => {
           service: service
         })) return null;
 
-        return db.Playlist.create({
-          name: playlist.name,
-          service: service
-        });
+      return db.Playlist.create({
+        name: playlist.name,
+        service: service
+      });
     })().catch(console.log.bind(console)));
   });
 
@@ -56,15 +57,13 @@ module.exports.load = async () => {
         })) return null;
 
       let playlistsWithTrack = [];
-      const playlistTrack = playlistTracks.find(playlistTrack => playlistTrack.trackId === track.id);
-      if (playlistTrack) {
+      const tracksInPlaylist = playlistTracks.filter(playlistTrack => playlistTrack.trackId === track.id);
+      if (tracksInPlaylist.length) {
         //console.log(playlistTrack);
-        playlistsWithTrack = playlists
-          .filter(playlist => playlist.id == playlistTrack.playlistId)
-          .map(playlist => ({
-            service: service,
-            name: playlist.name
-          }));
+        playlistsWithTrack = tracksInPlaylist.map(playlistTrack => ({
+          service: service,
+          name: playlists.find(playlist => playlist.id == playlistTrack.playlistId).name
+        }));
         //console.log(playlistsWithTrack);
       }
 
@@ -76,7 +75,7 @@ module.exports.load = async () => {
         duration: track.durationMillis,
         size: track.estimatedSize,
         genres: track.genre.split(','),
-        covers: track.artistArtRef ? track.artistArtRef.map(ref => ({
+        covers: track.albumArtRef ? track.albumArtRef.map(ref => ({
             type: 'web',
             path: ref.url
           })) : null,
@@ -88,16 +87,20 @@ module.exports.load = async () => {
           n: track.discNumber,
           of: track.totalDiscCount
         },
-        service: 'gmusic',
+        service: service,
         playlists: playlistsWithTrack
       });
     })().catch(err => {
-      console.log(track);
-      //console.log(err);
+      //console.log(track);
+      console.log(err);
     }));
   });
 
-  return Promise.all(promises);
+  return Promise
+    .all(promises)
+    .then(() => {
+      db.Track.indexServiceInES(service);
+    });
 
   async function fetchTracks (token, i) {
     if (i === LIMIT) return [];

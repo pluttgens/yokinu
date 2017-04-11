@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const elasticsearch = require('../elasticsearch');
 
 const trackSchema = mongoose.Schema({
   title: String,
@@ -37,6 +38,28 @@ trackSchema.index({ title: 'text', artist: 'text', album: 'text' }, {
     album: 2
   }
 });
+
+trackSchema.statics.indexServiceInES = function (service) {
+  return this
+    .find({
+      service: service
+    })
+    .exec()
+    .then(tracks => {
+
+      elasticsearch.bulk({
+        body: tracks.reduce((prev, track) => {
+          prev.push({ index: { _index: 'ykn', _type: 'tracks', _id: track.id } });
+          prev.push({
+            title: track.title,
+            artist: track.artist,
+            album: track.album
+          });
+          return prev;
+        }, [])
+      });
+    });
+};
 
 module.exports = {
   model: mongoose.model('Track', trackSchema),

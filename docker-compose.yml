@@ -16,8 +16,25 @@ services:
       - 4100:4100
     links:
       - yknmongodb:mongodb
+      - yknelasticsearch:elasticsearch
     volumes:
       - ./src:/usr/src/ykn/src
+  yknelasticsearch:
+    restart: always
+    image: elasticsearch:alpine
+    ports:
+      - "9201:9200"
+      - "9301:9300"
+    volumes:
+      - ykn-elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - http.host=0.0.0.0
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - node.master=true
+      - transport.host=127.0.0.1
 volumes:
   ykn-mongodb-data:
+    driver: local
+  ykn-elasticsearch-data:
     driver: local
