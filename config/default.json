@@ -1,0 +1,44 @@
+{
+  "gmusic": {
+    "email": "",
+    "password": "",
+    "androidId": "",
+    "masterToken": "",
+    "active": false
+  },
+  "dropbox": {
+    "token": "",
+    "directories": [],
+    "active": false
+  },
+  "yokinu": {
+    "low_memory": false,
+    "force_sync": false,
+    "elasticsearch": {
+      "host": "elasticsearch:9200",
+      "index": "yokinu"
+    },
+    "logging": {
+      "directory": "/var/log/yokinu",
+      "access": {
+        "level": "silly",
+        "silent": false
+      },
+      "db": {
+        "level": "silly",
+        "silent": false
+      },
+      "operational": {
+        "level": "silly",
+        "silent": false
+      }
+    },
+    "port": "4100",
+    "mariadb": {
+      "uri": "mysql://ykn:ykn@mariadb:3306/yokinu",
+      "pool": {
+        "max": 20
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/core/index.js"],"names":["module","exports","db","require","routes"],"mappings":"AAAA;;AAEAA,OAAOC,OAAP,GAAiB;AACfC,MAAIC,QAAQ,kBAAR,CADW;AAEfC,UAAQD,QAAQ,gBAAR;AAFO,CAAjB","file":"index.js","sourcesContent":["'use strict';\n\nmodule.exports = {\n  db: require('./database/index'),\n  routes: require('./routes/index')\n};\n"]}

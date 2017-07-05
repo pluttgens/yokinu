@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../src/core/database-old/index.js"],"names":["module","exports","Cover","require","Track"],"mappings":"AAAA;;AAEAA,OAAOC,OAAP,GAAiB;AACfC,SAAOC,QAAQ,gBAAR,CADQ;AAEfC,SAAOD,QAAQ,gBAAR;AAFQ,CAAjB","file":"index.js","sourcesContent":["'use strict';\n\nmodule.exports = {\n  Cover: require('./models/cover'),\n  Track: require('./models/track')\n};\n"]}

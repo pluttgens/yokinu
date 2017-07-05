@@ -1,13 +1,18 @@
 version: '2'
 
 services:
-  yknmongodb:
+  yknmariadb:
     restart: always
-    image: mongo:latest
+    image: mariadb:latest
     ports:
-      - "27117:27017"
+      - "27118:3306"
     volumes:
-      - ykn-mongodb-data:/data/db
+      - ykn-mariadb-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=yokinu
+      - MYSQL_USER=ykn
+      - MYSQL_PASSWORD=ykn
   yknserver:
     restart: always
     build: .
@@ -15,10 +20,13 @@ services:
     ports:
       - 4100:4100
     links:
-      - yknmongodb:mongodb
+      - yknmariadb:mariadb
       - yknelasticsearch:elasticsearch
     volumes:
-      - ./src:/usr/src/ykn/src
+      - .:/usr/src/ykn
+      - ykn-server-logs:/var/log/yokinu
+    environment:
+      - NODE_ENV=development
   yknelasticsearch:
     restart: always
     image: elasticsearch:alpine
@@ -34,7 +42,9 @@ services:
       - node.master=true
       - transport.host=127.0.0.1
 volumes:
-  ykn-mongodb-data:
+  ykn-mariadb-data:
     driver: local
   ykn-elasticsearch-data:
+    driver: local
+  ykn-server-logs:
     driver: local

@@ -1,16 +1,50 @@
-'use strict';
+import Sequelize from 'sequelize';
+import sqlGlobals from './utils/sequelize-globals';
 
-const mongoose = require('mongoose');
+export default function (sequelize) {
+  const Playlist = sequelize.define('playlist', {
+    id: {
+      type: Sequelize.STRING(25),
+      primaryKey: true
+    },
 
-const playlistSchema = mongoose.Schema({
-  name: {type: String, required: true},
-  service: {type: String, required: true}
-});
+    name: {
+      type: Sequelize.STRING,
+      unique: 'playlist__name_service',
+      allowNull: false,
+      isAlphanumeric: true
+    },
+    description: {
+      type: Sequelize.STRING
+    },
+    remote_id: {
+      type: Sequelize.STRING
+    }
+  }, {
+    ...sqlGlobals.defaultOptions
+  });
 
-playlistSchema.index({name: 1});
-playlistSchema.index({ name: 'text'});
+  Playlist.associate = function (models) {
+    this.belongsToMany(models.user, {
+      through: 'user_playlists'
+    });
 
-module.exports = {
-  model: mongoose.model('Playlist', playlistSchema),
-  schema: playlistSchema
-};
+    this.belongsToMany(models.track, {
+      through: {
+        model: 'playlist_tracks',
+        unique: true
+      },
+      as: 'tracks',
+      foreignkey: 'playlist_id'
+    });
+
+    this.belongsTo(models.service, {
+      foreignKey: 'service_id',
+      unique: 'playlist__name_service',
+      as: 'service'
+    });
+  };
+
+  return Playlist;
+}
+

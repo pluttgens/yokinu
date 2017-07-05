@@ -1,67 +1,77 @@
-'use strict';
+import Sequelize from 'sequelize';
+import sqlGlobals from './utils/sequelize-globals';
 
-const mongoose = require('mongoose');
-const elasticsearch = require('../elasticsearch');
+export default function (sequelize) {
+  const Track = sequelize.define('track', {
+    id: {
+      type: Sequelize.STRING(25),
+      primaryKey: true
+    },
+    title: {
+      type: Sequelize.STRING,
+      allowNull: false
+    },
+    duration: {
+      type: Sequelize.INTEGER
+    },
+    track_number: {
+      type: Sequelize.INTEGER
+    },
+    track_number_of: {
+      type: Sequelize.INTEGER
+    },
+    disc_number: {
+      type: Sequelize.INTEGER
+    },
+    disc_number_of: {
+      type: Sequelize.INTEGER
+    },
+    size: {
+      type: Sequelize.INTEGER
+    },
+    genre: {
+      type: Sequelize.STRING
+    },
+    path: {
+      type: Sequelize.STRING,
+      unique: 'track__path_service'
+    },
+    service_id: {
+      type: Sequelize.STRING,
+      unique: 'track__path_service'
+    }
+  }, {
+    ...sqlGlobals.defaultOptions
+  });
 
-const trackSchema = mongoose.Schema({
-  title: String,
-  artist: String,
-  album: String,
-  duration: Number,
-  track: {
-    n: Number,
-    of: Number
-  },
-  disk: {
-    n: Number,
-    of: Number
-  },
-  genres: [String],
-  covers: [{
-    type: { type: String, enum: ['web', 'local'] },
-    path: String
-  }],
-  size: Number,
-  service: { type: String, required: true },
-  path: { type: String, required: true, unique: true },
-  playlists: [{
-    name: String,
-    service: { type: String, required: true }
-  }]
-});
-
-trackSchema.index({ service: 1, path: 1 }, { unique: true });
-trackSchema.index({ title: 'text', artist: 'text', album: 'text' }, {
-  weights: {
-    title: 5,
-    artist: 3,
-    album: 2
-  }
-});
-
-trackSchema.statics.indexServiceInES = function (service) {
-  return this
-    .find({
-      service: service
-    })
-    .exec()
-    .then(tracks => {
-
-      elasticsearch.bulk({
-        body: tracks.reduce((prev, track) => {
-          prev.push({ index: { _index: 'ykn', _type: 'tracks', _id: track.id } });
-          prev.push({
-            title: track.title,
-            artist: track.artist,
-            album: track.album
-          });
-          return prev;
-        }, [])
-      });
+  Track.associate = function (models) {
+    this.belongsToMany(models.user, {
+      through: 'user_tracks'
     });
-};
 
-module.exports = {
-  model: mongoose.model('Track', trackSchema),
-  schema: trackSchema
-};
+    this.belongsToMany(models.playlist, {
+      through: {
+        model: 'playlist_tracks',
+        unique: true
+      },
+      scope: 'playlistTracks',
+      as: 'playlists',
+      foreignkey: 'track_id'
+    });
+
+    this.belongsTo(models.service, {
+      as: 'service',
+      foreignKey: 'service_id'
+    });
+    this.belongsTo(models.album, {
+      as: 'album',
+      foreignKey: 'album_id'
+    });
+    this.belongsTo(models.artist, {
+      as: 'artist',
+      foreignKey: 'artist_id'
+    });
+  };
+
+  return Track;
+}

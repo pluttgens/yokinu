@@ -1,10 +1,6 @@
-'use strict';
-
-const express = require('express');
+import express from 'express';
+import db from '../database';
 const router = express.Router();
-const Promise = require('bluebird');
-const validator = require('validator');
-const db = require('../database');
 
 router
   .route('/')
@@ -25,32 +21,25 @@ router
     }
 
     (async () => {
-      const playlists = await db.Playlist.find({});
+      const playlists = await db.playlist.findAll({});
 
       const data = {};
-      const promises = [];
 
-      playlists.forEach(playlist => {
-        promises.push((async () => {
-          data[playlist.id] = {
-            name: playlist.name,
-            service: playlist.service,
-            tracks: await db.Track.find({
-              playlists: {
-                $elemMatch: {
-                  name: playlist.name,
-                  service: playlist.service
-                }
-              }
-            })
-          };
-        })().catch(console.log.bind(console)));
-      });
+      for (let playlist of playlists) {
+        data[playlist.id] = {
+          name: playlist.name,
+          service: playlist.service_id,
+          tracks: await playlist.getTracks({
+            include: [
+              { model: db.artist, as: 'artist'},
+              { model: db.album, as: 'album' }
+            ]
+          })
+        };
+      }
 
-      return Promise.all(promises).then(() => {
-        return res.json({
-          data: data
-        });
+      return res.json({
+        data: data
       });
     })().catch(next);
   });

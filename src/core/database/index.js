@@ -1,31 +1,62 @@
-'use strict';
+import config from 'config';
+import Sequelize from 'sequelize';
+import { env , snowflake} from '../helpers';
+import * as Elasticsearch from './elasticsearch';
+import * as models from './models';
+import { databaseLogger } from '../loggers';
+import {exitCodes} from '../errors';
 
-const config = require('../../config').yokinu;
-const mongoose = require('mongoose');
-mongoose.Promise = require('bluebird');
-
-const options = {
-  server: {
-    auto_reconnect: true,
-    poolSize: config.low_memory ? 1 : 5,
-    socketOptions: {
-      keepAlive: 1,
-      connectTimeoutMS: 300000
-    }
+const sequelize = new Sequelize(config.yokinu.mariadb.uri, {
+  logging: false,
+  define: {
+    freezeTableName: true
+  },
+  typeValidation: true,
+  pool: {
+    max: config.yokinu.mariadb.pool.max,
+    min: 0,
+    idle: 10000
   }
-};
-
-mongoose.connect('mongodb://mongodb/ykn', options);
-
-process.on('SIGINT', function () {
-  mongoose.connection.close(function () {
-    console.log('Mongoose disconnected on app termination');
-    process.exit(0);
-  });
 });
 
-module.exports  = {
-  Playlist: require('./models/playlist').model,
-  Track: require('./models/track').model,
-  User: require('./models/user').model
+Object.keys(models).forEach(model => models[model](sequelize));
+
+sequelize.addHook('beforeCreate', async function (instance, options) {
+    if (instance.id) return Promise.resolve();
+    instance.id = await snowflake.getId();
+});
+
+sequelize.addHook('validationFailed', function (instance, options, error, fn) {
+  databaseLogger.error(error);
+  fn();
+});
+
+Object.keys(sequelize.models).forEach(name => {
+  if ('associate' in sequelize.models[name]) {
+    sequelize.models[name].associate(sequelize.models);
+  }
+});
+
+async function init () {
+  databaseLogger.debug(`syncing database - force : ${env.shouldForceSync()}`);
+  try {
+    if (env.isDevelopment()) {
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+      await sequelize.sync({ force: env.shouldForceSync() });
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+      await Elasticsearch.init();
+    } else {
+      await sequelize.sync();
+    }
+  } catch (e) {
+    databaseLogger.error(e);
+    process.exit(exitCodes.NO_DATABASE);
+  }
+}
+
+export default {
+  init,
+  elasticsearch: Elasticsearch.elasticsearch,
+  sequelize,
+  ...sequelize.models
 };

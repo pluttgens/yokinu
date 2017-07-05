@@ -1,0 +1,14 @@
+{
+  "gmusic": {
+    "email": "m1105.108.donger420@gmail.com",
+    "password": "bzubkeisvkbjrjzy",
+    "androidId": "3C8A70B58219AA69",
+    "masterToken": "oauth2rt_1/3ylfH-hW41Hxt1RJp_1FSAb9dzAkLELFm5bBz24wWUVZCnigJYml_3vdeX6y5u_X"
+  },
+  "dropbox": {
+    "token": "WJFUthrwxyIAAAAAAAAAFaRK-78q_793P3W3VuuUXvtzWnUsWgb_K99ci2wbpl7O",
+    "directories": [
+      "/music"
+    ]
+  }
+}

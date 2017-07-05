@@ -1,22 +1,31 @@
-'use strict';
-
-const http = require('http');
-const express = require('express');
-const logger = require('morgan');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const Promise = require('bluebird');
-const path = require('path');
-const routes = require('./core/routes/index');
+import config from 'config';
+import http from 'http';
+import express from 'express';
+import logger from 'morgan';
+import bodyParser from 'body-parser';
+import compress from 'compression';
+import cors from 'cors';
+import helmet from 'helmet';
+import Promise from 'bluebird';
+import path from 'path';
+import routes from './core/routes/index';
+import database from './core/database';
+import { accessLogger } from './core/loggers';
+import * as controllers from './core/controllers';
+import { snowflake } from './core/helpers';
 
 (async () => {
+  await database.init();
+
   const app = express();
 
   app.disable('etag');
-  app.use(logger('dev'));
+  app.use(logger("combined", { "stream": { write: message => accessLogger.info(message) } }));
   app.use(bodyParser.json());
-  app.use(bodyParser.urlencoded({extended: false}));
+  app.use(bodyParser.urlencoded({ extended: false }));
   app.use(cors());
+  app.use(helmet());
+  app.use(compress());
 
   const services = [
     'gmusic',
@@ -28,7 +37,12 @@ const routes = require('./core/routes/index');
 
   console.log('Loading services...');
   for (let serviceName of services) {
-    app.locals.services[serviceName] = require('./modules/' + serviceName);
+    app.locals.services[serviceName] = new (require('./services/' + serviceName).default)(config[services], {
+      database,
+      controllers: { track: controllers.trackController },
+      snowflake
+    });
+    await app.locals.services[serviceName].init()
   }
 
   await Promise.all(promises);
@@ -48,10 +62,10 @@ const routes = require('./core/routes/index');
 
   app.use((err, req, res, next) => {
     console.log(err);
-    res.send(err.stack || err);
+    res.send(err.stack || err);
   });
 
-  const port = process.env.PORT || 4100;
+  const port = config.yokinu.port;
   const server = http.createServer(app);
   server.listen(port);
   console.log('listening on port ' + port);
