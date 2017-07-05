@@ -1,23 +1,49 @@
 version: '2'
 
 services:
-  yknmongodb:
+  yknmariadbprod:
     restart: always
-    image: mongo:latest
+    image: mariadb:latest
     ports:
-      - "27118:27017"
+      - "27118:3306"
     volumes:
-      - ykn-mongodb-data:/data/db
-  yknserver:
+      - ykn-mariadb-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=yokinu
+      - MYSQL_USER=ykn
+      - MYSQL_PASSWORD=ykn
+  yknserverprod:
     restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
+    build: .
     image: ykn/server:prod
     ports:
-      - 4101:4100
+      - 4100:4100
     links:
-      - yknmongodb:mongodb
+      - yknmariadbprod:mariadb
+      - yknelasticsearchprod:elasticsearch
+    volumes:
+      - ykn-server-logs-prod:/var/log/yokinu
+    environment:
+      - NODE_ENV=production
+  yknelasticsearchprod:
+    restart: always
+    image: elasticsearch:alpine
+    ports:
+      - "9201:9200"
+      - "9301:9300"
+    volumes:
+      - ykn-elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      - http.host=0.0.0.0
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - node.master=true
+      - transport.host=127.0.0.1
 volumes:
-  ykn-mongodb-data:
+  ykn-mariadb-data-prod:
+    driver: local
+  ykn-elasticsearch-data-prod:
+    driver: local
+  ykn-server-logs-prod:
     driver: local

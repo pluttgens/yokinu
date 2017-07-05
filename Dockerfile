@@ -10,7 +10,7 @@ VOLUME ["/var/log/yokinu"]
 WORKDIR /usr/src/ykn
 
 COPY package.json .
-RUN npm i
+RUN npm i --save-dev
 COPY . .
 
 EXPOSE 4100
