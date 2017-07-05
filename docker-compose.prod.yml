@@ -5,9 +5,9 @@ services:
     restart: always
     image: mariadb:latest
     ports:
-      - "27118:3306"
+      - "27120:3306"
     volumes:
-      - ykn-mariadb-data:/var/lib/mysql
+      - ykn-mariadb-data-prod:/var/lib/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=yokinu
@@ -15,10 +15,12 @@ services:
       - MYSQL_PASSWORD=ykn
   yknserverprod:
     restart: always
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: ykn/server:prod
     ports:
-      - 4100:4100
+      - 4101:4100
     links:
       - yknmariadbprod:mariadb
       - yknelasticsearchprod:elasticsearch
@@ -30,10 +32,10 @@ services:
     restart: always
     image: elasticsearch:alpine
     ports:
-      - "9201:9200"
-      - "9301:9300"
+      - "9202:9200"
+      - "9302:9300"
     volumes:
-      - ykn-elasticsearch-data:/usr/share/elasticsearch/data
+      - ykn-elasticsearch-data-prod:/usr/share/elasticsearch/data
     environment:
       - http.host=0.0.0.0
       - http.cors.enabled=true

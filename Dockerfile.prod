@@ -7,9 +7,11 @@ RUN apk update && apk upgrade && \
 RUN mkdir -p /usr/src/ykn /usr/src/ykn/src
 WORKDIR /usr/src/ykn
 
+RUN npm i -g forever
 COPY package.json .
 RUN npm i
 COPY src src
+COPY config config
 COPY .babelrc .
 RUN npm run build
 

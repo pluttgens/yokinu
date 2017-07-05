@@ -14,6 +14,8 @@
   "yokinu": {
     "low_memory": false,
     "force_sync": false,
+    "datacenterId": 0,
+    "workerId": 0,
     "elasticsearch": {
       "host": "elasticsearch:9200",
       "index": "yokinu"
