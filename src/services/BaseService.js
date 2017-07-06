@@ -28,4 +28,8 @@ export default class BaseService {
   putStream(req, body) {
 
   }
+
+  getBatchSize() {
+    return this.config.low_memory ? 500 : 3000;
+  }
 }

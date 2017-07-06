@@ -61,9 +61,12 @@ export default class GmusicService extends BaseService {
           description: playlists[playlistId].description,
           remote_id: playlists[playlistId].id,
           service_id: this.name
-        })), { individualHooks: true })
+        })), {
+        individualHooks: true,
+        updateOnDuplicate: true
+      });
     } catch (e) {
-      playlists = await this.database.playlists.findAll({
+      playlists = await this.database.playlist.findAll({
         where: {
           service_id: this.name
         }
@@ -153,7 +156,7 @@ export default class GmusicService extends BaseService {
     console.log(Date.now() - startedAt, 'ms.', 'Inserting artists...');
 
     await this.database.sequelize.transaction(async (t) => {
-      for (let _artists of _.chunk(Object.keys(artists).map(artistName => artists[artistName]), 3000)) {
+      for (let _artists of _.chunk(Object.keys(artists).map(artistName => artists[artistName]), this.getBatchSize())) {
         await this.database.artist.bulkCreate(_artists, {
           individualHooks: true,
           transaction: t
@@ -161,7 +164,7 @@ export default class GmusicService extends BaseService {
       }
 
       console.log(Date.now() - startedAt, 'ms.', 'Inserting albums...');
-      for (let _albums of _.chunk(Object.keys(albums).map(albumHash => albums[albumHash]), 3000)) {
+      for (let _albums of _.chunk(Object.keys(albums).map(albumHash => albums[albumHash]), this.getBatchSize())) {
         await this.database.album.bulkCreate(_albums, {
           individualHooks: true,
           transaction: t
@@ -169,14 +172,14 @@ export default class GmusicService extends BaseService {
       }
 
       console.log(Date.now() - startedAt, 'ms.', 'Inserting tracks...');
-      for (let __tracks of _.chunk(_tracks, 3000)) {
+      for (let __tracks of _.chunk(_tracks, this.getBatchSize())) {
         await this.database.track.bulkCreate(__tracks, {
           individualHooks: true,
           transaction: t
         });
       }
       console.log(Date.now() - startedAt, 'ms.', 'Inserting playlist_tracks...');
-      for (let __playlistTracks of _.chunk(_playlistTracks, 3000)) {
+      for (let __playlistTracks of _.chunk(_playlistTracks, this.getBatchSize())) {
         await this.database.playlist_tracks.bulkCreate(__playlistTracks, {
           individualHooks: true,
           transaction: t

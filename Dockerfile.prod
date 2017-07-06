@@ -11,7 +11,6 @@ RUN npm i -g forever
 COPY package.json .
 RUN npm i
 COPY src src
-COPY config config
 COPY .babelrc .
 RUN npm run build
 

@@ -1,10 +1,10 @@
 import config from 'config';
 import Sequelize from 'sequelize';
-import { env , snowflake} from '../helpers';
+import { env, snowflake } from '../helpers';
 import * as Elasticsearch from './elasticsearch';
 import * as models from './models';
 import { databaseLogger } from '../loggers';
-import {exitCodes} from '../errors';
+import { exitCodes } from '../errors';
 
 const sequelize = new Sequelize(config.yokinu.mariadb.uri, {
   logging: false,
@@ -22,8 +22,8 @@ const sequelize = new Sequelize(config.yokinu.mariadb.uri, {
 Object.keys(models).forEach(model => models[model](sequelize));
 
 sequelize.addHook('beforeCreate', async function (instance, options) {
-    if (instance.id) return Promise.resolve();
-    instance.id = await snowflake.getId();
+  if (instance.id) return Promise.resolve();
+  instance.id = await snowflake.getId();
 });
 
 sequelize.addHook('validationFailed', function (instance, options, error, fn) {
@@ -37,17 +37,15 @@ Object.keys(sequelize.models).forEach(name => {
   }
 });
 
-async function init () {
+async function init() {
   databaseLogger.debug(`syncing database - force : ${env.shouldForceSync()}`);
   try {
     if (env.isDevelopment()) {
-      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-      await sequelize.sync({ force: env.shouldForceSync() });
-      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
       await Elasticsearch.init();
-    } else {
-      await sequelize.sync();
     }
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    await sequelize.sync({ force: env.shouldForceSync() });
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
   } catch (e) {
     databaseLogger.error(e);
     process.exit(exitCodes.NO_DATABASE);

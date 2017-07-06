@@ -37,7 +37,7 @@ import { snowflake } from './core/helpers';
 
   console.log('Loading services...');
   for (let serviceName of services) {
-    app.locals.services[serviceName] = new (require('./services/' + serviceName).default)(config[services], {
+    app.locals.services[serviceName] = new (require('./services/' + serviceName).default)(Object.assign({}, config[services], { low_memory: config.yokinu.low_memory }), {
       database,
       controllers: { track: controllers.trackController },
       snowflake
