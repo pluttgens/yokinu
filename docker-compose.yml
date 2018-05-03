@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 
 services:
   yknmariadb:
@@ -8,6 +8,10 @@ services:
       - "27118:3306"
     volumes:
       - ykn-mariadb-data:/var/lib/mysql
+    networks:
+      default:
+       aliases:
+         - mariadb
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=yokinu
@@ -18,33 +22,59 @@ services:
     build: .
     image: ykn/server:dev
     ports:
-      - 4100:4100
-    links:
-      - yknmariadb:mariadb
-      - yknelasticsearch:elasticsearch
+      - "4100:4100"
+    networks:
+      default:
+       aliases:
+         - yknserver
+    depends_on:
+      - yknmariadb
+      - yknelasticsearch
+      - yknredis
     volumes:
       - .:/usr/src/ykn
+      - ykn-server-data:/data
       - ykn-server-logs:/var/log/yokinu
     environment:
       - NODE_ENV=development
   yknelasticsearch:
     restart: always
-    image: elasticsearch:alpine
+    image: elasticsearch:latest
     ports:
       - "9201:9200"
       - "9301:9300"
     volumes:
       - ykn-elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      default:
+        aliases:
+          - elasticsearch
     environment:
       - http.host=0.0.0.0
       - http.cors.enabled=true
       - http.cors.allow-origin=*
       - node.master=true
       - transport.host=127.0.0.1
+  yknredis:
+    restart: always
+    image: redis:alpine
+    ports:
+      - "6479:6379"
+    volumes:
+      - ykn-redis-data:/data
+    networks:
+          default:
+           aliases:
+             - redis
+
 volumes:
   ykn-mariadb-data:
     driver: local
   ykn-elasticsearch-data:
+    driver: local
+  ykn-redis-data:
+    driver: local
+  ykn-server-data:
     driver: local
   ykn-server-logs:
     driver: local

@@ -1,52 +1,52 @@
-version: '2'
-
-services:
-  yknmariadbprod:
-    restart: always
-    image: mariadb:latest
-    ports:
-      - "3506:3306"
-    volumes:
-      - ykn-mariadb-data-prod:/var/lib/mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=yokinu
-      - MYSQL_USER=ykn
-      - MYSQL_PASSWORD=ykn
-  yknserverprod:
-    restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
-    image: ykn/server:prod
-    ports:
-      - 4101:4100
-    links:
-      - yknmariadbprod:mariadb
-      - yknelasticsearchprod:elasticsearch
-    volumes:
-      - ./config/:/usr/src/ykn/config
-      - ykn-server-logs-prod:/var/log/yokinu
-    environment:
-      - NODE_ENV=production
-  yknelasticsearchprod:
-    restart: always
-    image: elasticsearch:alpine
-    ports:
-      - "9202:9200"
-      - "9302:9300"
-    volumes:
-      - ykn-elasticsearch-data-prod:/usr/share/elasticsearch/data
-    environment:
-      - http.host=0.0.0.0
-      - http.cors.enabled=true
-      - http.cors.allow-origin=*
-      - node.master=true
-      - transport.host=127.0.0.1
-volumes:
-  ykn-mariadb-data-prod:
-    driver: local
-  ykn-elasticsearch-data-prod:
-    driver: local
-  ykn-server-logs-prod:
-    driver: local
+#version: '3'
+#
+#services:
+#  yknmariadbprod:
+#    restart: always
+#    image: mariadb:latest
+#    ports:
+#      - "3506:3306"
+#    volumes:
+#      - ykn-mariadb-data-prod:/var/lib/mysql
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=root
+#      - MYSQL_DATABASE=yokinu
+#      - MYSQL_USER=ykn
+#      - MYSQL_PASSWORD=ykn
+#  yknserverprod:
+#    restart: always
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.prod
+#    image: ykn/server:prod
+#    ports:
+#      - 4101:4100
+#    links:
+#      - yknmariadbprod:mariadb
+#      - yknelasticsearchprod:elasticsearch
+#    volumes:
+#      - ./config/:/usr/src/ykn/config
+#      - ykn-server-logs-prod:/var/log/yokinu
+#    environment:
+#      - NODE_ENV=production
+#  yknelasticsearchprod:
+#    restart: always
+#    image: elasticsearch:alpine
+#    ports:
+#      - "9202:9200"
+#      - "9302:9300"
+#    volumes:
+#      - ykn-elasticsearch-data-prod:/usr/share/elasticsearch/data
+#    environment:
+#      - http.host=0.0.0.0
+#      - http.cors.enabled=true
+#      - http.cors.allow-origin=*
+#      - node.master=true
+#      - transport.host=127.0.0.1
+#volumes:
+#  ykn-mariadb-data-prod:
+#    driver: local
+#  ykn-elasticsearch-data-prod:
+#    driver: local
+#  ykn-server-logs-prod:
+#    driver: local

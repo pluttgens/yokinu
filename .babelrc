@@ -1,9 +1,22 @@
 {
   "plugins": [
-    "transform-runtime"
+    "transform-runtime",
+    [
+      "transform-object-rest-spread",
+      {
+        "useBuiltIns": true
+      }
+    ],
+    "transform-export-extensions"
   ],
   "presets": [
-    "latest",
-    "stage-0"
+    [
+      "env",
+      {
+        "targets": {
+          "node": "9.2"
+        }
+      }
+    ]
   ]
 }

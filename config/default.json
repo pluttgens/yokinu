@@ -1,21 +1,44 @@
 {
-  "gmusic": {
-    "email": "",
-    "password": "",
-    "androidId": "",
-    "masterToken": "",
-    "active": false
-  },
-  "dropbox": {
-    "token": "",
-    "directories": [],
-    "active": false
+  "services": {
+    "gmusic": {
+      "email": "",
+      "password": "",
+      "androidId": "",
+      "masterToken": "",
+      "active": false
+    },
+    "dropbox": {
+      "token": "",
+      "directories": [],
+      "active": false
+    },
+    "local": {
+      "active": true,
+      "data_dir": "/data/yokinu/library"
+    }
   },
   "yokinu": {
-    "low_memory": false,
-    "force_sync": false,
+    "auth": {
+      "jwt": {
+        "enabled": false,
+        "name": "jwt",
+        "aud": "yokinu",
+        "iss": "yokinu",
+        "secret": "123"
+      }
+    },
+    "livestream": {
+      "hlsTime": 5,
+      "hlsSize": 3,
+      "autoStart": false,
+      "directory": "/data/yokinu/livestream"
+    },
     "datacenterId": 0,
     "workerId": 0,
+    "low_memory": false,
+    "force_sync": false,
+    "temp_data": "/data/yokinu/tmp",
+    "streaming_dir": "/data/yokinu/livestream",
     "elasticsearch": {
       "host": "elasticsearch:9200",
       "index": "yokinu"
@@ -41,6 +64,10 @@
       "pool": {
         "max": 20
       }
+    },
+    "redis": {
+      "host": "redis",
+      "port": 6379
     }
   }
 }
