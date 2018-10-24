@@ -10,5 +10,5 @@ export function isDevelopment () {
 }
 
 export function shouldForceSync () {
-  return isDevelopment() && config.yokinu.force_sync;
+  return isDevelopment() && config.force_sync;
 }

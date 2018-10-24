@@ -3,12 +3,14 @@ import Sequelize from 'sequelize';
 import sqlGlobals from './utils/sequelize-globals';
 import Promise from 'bluebird';
 import mm from 'music-metadata';
-import mime from 'mime-types';
 import albumArt from 'album-art';
-import * as helpers from '../../helpers/index';
 import _ from 'lodash';
+import path from 'path';
+import sanitize from 'sanitize-filename';
 import { elasticsearch } from '../elasticsearch.mjs';
 import { operationalLogger } from '../../loggers/index.mjs';
+import service from './service.mjs';
+import { serviceManager } from '../../services';
 
 const Op = Sequelize.Op;
 
@@ -49,17 +51,23 @@ export default function (sequelize) {
     channels: {
       type: Sequelize.INTEGER
     },
+    format: {
+      type: Sequelize.STRING
+    },
     path: {
-      type: Sequelize.STRING,
-      unique: 'track__path_service'
+      type: Sequelize.STRING
     },
     serviceId: {
       type: Sequelize.STRING,
-      unique: 'track__path_service',
       field: 'service_id'
     }
   }, {
     ...sqlGlobals.defaultOptions,
+    indexes: [
+      { fields: ['path', 'service_id'], unique: true },
+      { fields: ['artist_id', 'album_id', 'title', 'format', 'service_id'], unique: true }
+    ],
+    hooks: {}
   });
 
   Track.associate = function (models) {
@@ -80,7 +88,7 @@ export default function (sequelize) {
         model: 'genre_track'
       },
       as: 'genres',
-      foreignKey: 'trackId'
+      foreignKey: 'track_id'
     });
 
     this.belongsTo(models.service, {
@@ -97,18 +105,16 @@ export default function (sequelize) {
     });
   };
 
-  Track.fromFile = async function (serviceId, path, type, size, transaction) {
+  Track.fromTags = async function ({ extension, tags = {}, userTags = {}, size, transaction }) {
+    operationalLogger.debug(`$Track.fromTags.`);
     const { models } = sequelize;
+
+    operationalLogger.info(`Track tags : ${JSON.stringify(tags)}`);
+    operationalLogger.info(`User tags : ${JSON.stringify(userTags)}`);
     try {
-      const tags = await models.track.readTags(path, type, size);
-
-      console.log(tags);
-
-      // if (tags.common.picture)
-
       const [artist, artistCreated] = await models.artist.findOrCreate({
         where: {
-          name: tags.common.artist
+          name: tags.common.artist || userTags.artist
         },
         transaction
       });
@@ -118,7 +124,7 @@ export default function (sequelize) {
 
       const [album, albumCreated] = await models.album.findOrCreate({
         where: {
-          name: tags.common.album,
+          name: tags.common.album || userTags.album,
           artistId: artist.id
         },
         transaction
@@ -128,22 +134,25 @@ export default function (sequelize) {
         operationalLogger.debug(`New album : ${album.name}`);
 
 
+      // Genres
       let foundOrCreatedGenres;
       let genres = [];
-      if (tags.common.genre) {
-        foundOrCreatedGenres = await Promise.all(
-          tags.common.genre
-            .map(genre => genre.split(','))
-            .reduce((prev, curr) => prev.concat(curr), [])
-            .map(genre => genre.trim())
-            .map(genre => {
-              return models.genre.findOrCreate({
-                where: {
-                  name: genre
-                },
-                transaction
-              });
-            }));
+
+      if (userTags.genre) {
+        foundOrCreatedGenres = await processGenres([userTags.genre])
+      } else if (tags.common.genre) {
+        foundOrCreatedGenres = await processGenres(tags.common.genre)
+      }
+
+      if (foundOrCreatedGenres) {
+        foundOrCreatedGenres = await Promise.all(foundOrCreatedGenres.map(genre => {
+          return models.genre.findOrCreate({
+            where: {
+              name: genre
+            },
+            transaction
+          });
+        }));
 
         foundOrCreatedGenres = foundOrCreatedGenres.map(foundOrCreatedGenre => ({
           genre: foundOrCreatedGenre[0],
@@ -157,39 +166,69 @@ export default function (sequelize) {
           .forEach(foundOrCreatedGenre => operationalLogger.debug(`New genre : ${foundOrCreatedGenre.genre.name}`));
       }
 
-      const track = await models.track.create({
-        title: tags.common.title,
-        duration: tags.format.duration,
-        trackNumber: tags.common.track.no,
-        trackNumberOf: tags.common.track.of,
-        discNumber: tags.common.disk.no,
-        discNumberOf: tags.common.disk.of,
-        size: size,
-        bitrate: tags.format.bitrate,
-        sampleRate: tags.format.sampleRate,
-        channels: tags.format.numberOfChannels,
-        path: path,
-        serviceId: serviceId
+      const track = await this.create({
+        title: userTags.title || tags.common.title,
+        duration: userTags.duration || tags.format.duration,
+        trackNumber: userTags.trackNumber || tags.common.track.no,
+        trackNumberOf: userTags.trackNumberOf || tags.common.track.of,
+        discNumber: userTags.discNumber || tags.common.disk.no,
+        discNumberOf: userTags.discNumberOf || tags.common.disk.of,
+        size: userTags.size || size,
+        bitrate: userTags.bitrate || tags.format.bitrate,
+        sampleRate: userTags.sampleRate || tags.format.sampleRate,
+        channels: userTags.channels || tags.format.numberOfChannels,
+        format: extension
       }, {
         transaction
       });
+      operationalLogger.debug(`Created track : ${JSON.stringify(track.get({ plain: true }))}`);
 
-      await track.setArtist(artist, { transaction, save: false });
-      await track.setAlbum(album, { transaction, save: false });
-      await track.setGenres(genres, { transaction, save: false });
+      await track.setArtist(artist, { transaction });
+      await track.setAlbum(album, { transaction });
+      await track.setGenres(genres, { transaction });
 
-      operationalLogger.debug(`Built track : ${JSON.stringify(track.get({ raw: true }))}`);
-
-      return track;
+      return track
     } catch (err) {
       operationalLogger.error(err);
       throw err;
     }
   };
 
+  function processGenres(genres) {
+    return genres
+      .filter(genre => genre)
+      .map(genre => genre.split(','))
+      .reduce((prev, curr) => prev.concat(curr), [])
+      .map(genre => genre.trim());
+  }
+
+  Track.fromFile = async function (file, { userTags = {}, transaction, requestId } = {}) {
+    operationalLogger.debug(`${requestId} - Track.fromStream.`);
+
+    let tags = {};
+    try {
+      tags = await mm.parseFile(file.path, {
+        mime: file.mime,
+        duration: true,
+        fileSize: file.size
+      });
+    } catch (err) {
+      operationalLogger.error(`${requestId} - music-metadata error : ${err}`);
+      throw err;
+    }
+
+    return this.fromTags({
+      tags,
+      userTags,
+      size: file.size,
+      extension: file.getExt(),
+      transaction
+    });
+  };
+
   Track.getAlbumArt = async function (artist, album) {
     const artUrl = await albumArt(artist, { album });
-    operationalLogger.debug(`Fetched album art : ${artUrl}`)
+    operationalLogger.debug(`Fetched album art : ${artUrl}`);
     return artUrl;
   };
 
@@ -234,12 +273,11 @@ export default function (sequelize) {
       });
   };
 
-  Track.prototype.indexInElastic = async function () {
-    const artist = await this.getArtist();
-    const album = await this.getAlbum();
-    const genres = await this.getGenres();
-
-    operationalLogger.debug(this.serviceId);
+  Track.prototype.indexInElastic = async function ({ transaction }) {
+    operationalLogger.info(`Indexing ${this} in elasticsearch`);
+    const artist = await this.getArtist({ transaction });
+    const album = await this.getAlbum({ transaction });
+    const genres = await this.getGenres({ transaction });
 
     return elasticsearch.index({
       index: config.yokinu.elasticsearch.index,
@@ -249,7 +287,7 @@ export default function (sequelize) {
         title: this.title,
         artist: artist.name,
         album: album.name,
-        genre: genres.map(genre => genre.name).join(', '),
+        genre: genres.map(genre => genre.name),
         path: this.path,
         service: this.serviceId
       }
@@ -276,22 +314,22 @@ export default function (sequelize) {
     return esResults;
   }
 
-  Track.textSearch = async function (q = '', skip = '0', limit = '100') {
+  Track.textSearch = async function (q = '', skip = 0, limit = 100) {
     const { models } = sequelize;
-    const options = helpers.params.checkSkipLimit(skip, limit);
 
     let result = { count: 0, rows: [] };
 
+    const include = [
+      { model: models.artist, as: 'artist', attributes: ['id', 'name'] },
+      { model: models.album, as: 'album', attributes: ['id', 'name', 'artist_id'] },
+      { model: models.genre, as: 'genres', attributes: ['id', 'name'] }
+    ];
+
     if (!q) {
       result = await this.findAndCountAll({
-        offset: options.skip,
-        limit: options.limit,
-        include: [
-          { model: models.artist, as: 'artist' },
-          { model: models.album, as: 'album' },
-          { model: models.genre, as: 'genres' },
-          { model: models.service, as: 'service' },
-        ]
+        offset: skip,
+        limit,
+        include
       });
     } else {
       const esResults = await queryElasticsearch(q);
@@ -303,14 +341,9 @@ export default function (sequelize) {
               [Op.in]: trackIds
             }
           },
-          offset: options.skip,
-          limit: options.limit,
-          include: [
-            { model: models.artist, as: 'artist' },
-            { model: models.album, as: 'album' },
-            { model: models.genre, as: 'genres' },
-            { model: models.service, as: 'service' },
-          ]
+          offset: skip,
+          limit,
+          include
         });
       }
     }
@@ -320,20 +353,61 @@ export default function (sequelize) {
     };
   };
 
-  Track.readTags = function (filePath, mimeType, fileSize) {
-    if (!mimeType) {
-      mimeType = mime.lookup(filePath);
+  Track.prototype.getFsPath = async function ({ includeArtist = true, includeAlbum = true, includeTitle = true, includeFormat = true, discriminant, join, transaction }) {
+    let fsPath = ``;
+    if (includeArtist) {
+      const artist = await this.getArtist({ transaction });
+      fsPath = concatPath(join, fsPath, artist.getSanitizedName());
     }
 
-    return mm.parseFile(filePath, mimeType, {
-      duration: true,
-      fileSize
-    });
+    if (includeAlbum) {
+      const album = await this.getAlbum({ transaction });
+      fsPath = concatPath(join, fsPath, album.getSanitizedName());
+    }
+
+    if (includeTitle) {
+      fsPath = concatPath(join, fsPath, this.getSanitizedTitle());
+    }
+
+    if (discriminant) {
+      fsPath = `${fsPath}_${discriminant}`;
+    }
+
+    if (includeFormat) {
+      fsPath = `${fsPath}.${this.format}`;
+    }
+
+    return fsPath;
   };
+
+  Track.prototype.getSanitizedTitle = function () {
+    return sanitize(this.title);
+  };
+
+  function concatPath(join, ...concat) {
+    if (join) {
+      return path.join(...concat);
+    }
+
+    return concat.join('/');
+  }
 
   Track.prototype.toString = function () {
     return `[${this.id}] ${this.title}`;
   };
 
+  Track.prototype.migrateTo = function (serviceId) {
+    const service = serviceManager.get(serviceId);
+
+
+  };
+
+  Track.SUPPORTED_FORMATS = {
+    MP3: 'mp3',
+    FLAC: 'flac',
+    M4A: 'm4a'
+  };
+
   return Track;
-}
+};
+

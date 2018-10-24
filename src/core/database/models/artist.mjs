@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 import sqlGlobals from './utils/sequelize-globals';
+import sanitize from 'sanitize-filename';
 
 export default function (sequelize) {
   const Artist = sequelize.define('artist', {
@@ -13,6 +14,11 @@ export default function (sequelize) {
       allowNull: false
     }
   }, {
+    getterMethods: {
+      sanitizedName() {
+        return sanitize(this.name);
+      }
+    },
     ...sqlGlobals.defaultOptions
   });
 
@@ -28,6 +34,10 @@ export default function (sequelize) {
   //     }
   //   });
   // };
+
+  Artist.prototype.getSanitizedName = function () {
+    return sanitize(this.name);
+  };
 
   return Artist;
 }

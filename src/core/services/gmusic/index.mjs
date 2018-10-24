@@ -2,60 +2,40 @@ import PlayMusic from 'playmusic';
 import Promise from 'bluebird';
 import _ from 'lodash';
 import BaseService from '../BaseService';
-import Errors from '../errors/index';
+import { operationalLogger } from '../../loggers/index';
+import { EXIT_CODES } from '../../errors/index';
 
-
-const pm = new PlayMusic();
-Promise.promisifyAll(pm);
 
 export default class GmusicService extends BaseService {
-  constructor(config, params) {
-    super('gmusic', {
-      config,
-      database: params.database,
-      controllers: params.controllers,
-      snowflake: params.snowflake
-    });
-
+  constructor(serviceConfig) {
+    super('gmusic', serviceConfig);
     this.androidId = null;
     this.masterToken = null;
+    this.pm = Promise.promisifyAll(new PlayMusic());
   }
 
-  async init() {
-    await super.init();
-    if (this.config.masterToken) {
-      return pm
-        .initAsync({
-          androidId: this.config.androidId,
-          masterToken: this.config.masterToken
+  async _init() {
+    return this.pm
+      .initAsync({
+        androidId: this.config.androidId,
+        masterToken: this.config.masterToken
+      })
+      .catch(() => this.pm
+        .loginAsync({
+          email: this.config.email,
+          password: this.config.password
         })
-        .catch(e => Promise.reject(new Errors.InitializationError(e)));
-    }
-
-    return pm
-      .loginAsync({
-        email: this.config.email,
-        password: this.config.password
-      })
-      .then(({androidId, masterToken}) => {
-        this.androidId = androidId;
-        this.masterToken = masterToken;
-      })
-      .catch(e => Promise.reject(new Errors.InitializationError(e)));
-  }
-
-  registerRoutes(router) {
-    router
-      .get('/');
-
-    return router;
+        .then(({ androidId, masterToken }) => {
+          console.log(creds);
+          operationalLogger.debug(`${this.name} - Generated new Android ID : ${androidId}`);
+          operationalLogger.debug(`${this.name} - Generated new master token : ${masterToken}`);
+          this.androidId = androidId;
+        }));
   }
 
   async load(params) {
     const startedAt = Date.now();
     // temporary constant to avoid fetching too much data.
-    const LIMIT = -1;
-    const SLICE = 0;
 
     console.log(Date.now() - startedAt, 'ms.', 'Fetching tracksRoutes...');
     let tracks = await fetchTracks(null, 0);
@@ -215,27 +195,63 @@ export default class GmusicService extends BaseService {
 
     console.log('loaded in : ', Date.now() - startedAt, 'ms.');
 
-
-    async function fetchTracks(token, i) {
-      if (i === LIMIT) return [];
-      let tracksData = await pm.getAllTracksAsync({ nextPageToken: token });
-      if (!tracksData.nextPageToken) return tracksData.data.items;
-      return tracksData.data.items.concat(await fetchTracks(tracksData.nextPageToken, ++i));
-    }
-
     async function fetchPlayLists() {
       return (await pm.getPlayListsAsync()).data.items;
     }
 
-    async function fetchPlayListEntries(token, i) {
-      if (i === LIMIT) return [];
-      let playListEntriesData = await pm.getPlayListEntriesAsync({ nextPageToken: token });
+    async function fetchPlayListEntries(token, limit) {
+      if (limit === 0) return [];
+      let playListEntriesData = await pm.getPlayListEntriesAsync({ limit, nextPageToken: token });
       if (!playListEntriesData.nextPageToken) return playListEntriesData.data.items;
-      return playListEntriesData.data.items.concat(await fetchTracks(playListEntriesData.nextPageToken, ++i));
+      return playListEntriesData.data.items.concat(await fetchTracks(playListEntriesData.nextPageToken, Math.max(limit - 1000, 0)));
     }
   }
 
-  getStream(path) {
-    return pm.getStreamAsync(path);
+  async fetchTracks(token, limit) {
+    if (limit === 0) return [];
+    let tracksData = await this.pm.getAllTracksAsync({ limit, nextPageToken: token });
+    if (!tracksData.nextPageToken) return tracksData.data.items;
+    return tracksData.data.items.concat(await this.fetchTracks(tracksData.nextPageToken, Math.max(limit - 1000, 0)));
+  }
+
+  async getUnloadedTracks({ withServiceTags, skip = 0, limit = 1000 }) {
+    operationalLogger.info(`Getting unloaded tracks from ${this.name} service.`);
+    operationalLogger.debug(`withServiceTags: ${withServiceTags}, skip: ${skip}, limit: ${limit}.`);
+    const tracks = (await this.fetchTracks(null, skip + limit)).slice(skip);
+    operationalLogger.info(`Fetched ${tracks.length} unloaded tracks.`);
+
+    return tracks
+      .filter(serviceTrack => !serviceTrack.storeId)
+      .map(serviceTrack => {
+        let track = {
+          path: serviceTrack.id || serviceTrack.storeId
+        };
+
+        if (withServiceTags) {
+          track = Object.assign(track, {
+            title: serviceTrack.title,
+            duration: serviceTrack.durationMillis,
+            trackNumber: serviceTrack.trackNumber,
+            trackNumberOf: serviceTrack.totalTrackCount,
+            discNumber: serviceTrack.discNumber,
+            discNumberOf: serviceTrack.totalDiscCount,
+            size: serviceTrack.estimatedSize,
+            genre: serviceTrack.genre,
+            album: serviceTrack.album,
+            artist: serviceTrack.artist,
+          });
+        }
+
+        return track;
+      });
+  }
+
+  async getStream(track) {
+    const stream = await this.pm.getStreamAsync(track.path);
+    return stream;
+  }
+
+  cleanup() {
+    operationalLogger.info(`${this.name} service is not allowed to cleanup`);
   }
 }

@@ -35,10 +35,8 @@
     },
     "datacenterId": 0,
     "workerId": 0,
-    "low_memory": false,
-    "force_sync": false,
-    "temp_data": "/data/yokinu/tmp",
-    "streaming_dir": "/data/yokinu/livestream",
+    "force_sync": true,
+    "maxFileSize": 549755813888,
     "elasticsearch": {
       "host": "elasticsearch:9200",
       "index": "yokinu"
@@ -58,7 +56,7 @@
         "silent": false
       }
     },
-    "port": "4100",
+    "port": "80",
     "mariadb": {
       "uri": "mysql://ykn:ykn@mariadb:3306/yokinu",
       "pool": {

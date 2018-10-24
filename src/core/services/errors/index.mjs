@@ -1,5 +1,11 @@
 import InitializationError from './InitializationError';
+import InvalidFormatError from './InvalidFormatError';
+import InvalidTrackInputError from './InvalidTrackInputError';
+import NoServiceFoundError from './NoServiceFoundError';
 
-export default {
-  InitializationError
+export {
+  InitializationError,
+  InvalidFormatError,
+  InvalidTrackInputError,
+  NoServiceFoundError
 };

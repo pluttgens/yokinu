@@ -1,7 +1,6 @@
 import config from 'config';
 import Elasticsearch from 'elasticsearch';
 import { elasticLogger } from '../loggers/index.mjs';
-import { env } from '../helpers/index.mjs';
 import { EXIT_CODES } from '../errors/index.mjs';
 
 export const elasticsearch = new Elasticsearch.Client({
@@ -27,10 +26,9 @@ export const elasticsearch = new Elasticsearch.Client({
   }
 });
 
-export async function init() {
-  if (env.shouldForceSync()) {
+export async function init({shouldForceSync}) {
+  if (shouldForceSync) {
     try {
-
       await elasticsearch.indices.delete({
         index: '*'
       });

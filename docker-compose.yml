@@ -32,7 +32,9 @@ services:
       - yknelasticsearch
       - yknredis
     volumes:
-      - .:/usr/src/ykn
+      - ./scripts:/usr/src/ykn/scripts
+      - ./config:/usr/src/ykn/config
+      - ./src:/usr/src/ykn/src
       - ykn-server-data:/data
       - ykn-server-logs:/var/log/yokinu
     environment:
@@ -63,9 +65,9 @@ services:
     volumes:
       - ykn-redis-data:/data
     networks:
-          default:
-           aliases:
-             - redis
+      default:
+        aliases:
+          - redis
 
 volumes:
   ykn-mariadb-data:

@@ -4,37 +4,51 @@ import formidable from 'formidable';
 import db from '../database/index.mjs';
 import { operationalLogger } from '../loggers/index.mjs';
 import { dbCall } from '../helpers/wrappers.mjs';
-import { ServiceManager } from '../services/index.mjs'
+import { serviceManager } from '../services/index.mjs'
 import HttpError from 'http-errors';
-import serviceManager from '../services/ServiceManager.mjs';
+import mime from 'mime-types';
+import Check from 'express-validator/check';
+import Filter from 'express-validator/filter';
 
 const router = express.Router();
+
+const { query, checkSchema, validationResult } = Check;
+const { matchedData } = Filter;
 
 
 router
   .route('/')
-  .get((req, res, next) => {
-    const skip = req.query.skip;
-    const limit = req.query.limit;
-    const q = req.query.q;
+  .get([
+      query('limit')
+        .isInt({ min: 0, max: config.search.limit })
+        .optional({ nullable: true }),
+      query('q')
+        .optional({ nullable: true })],
+    (req, res, next) => {
+      (async () => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          throw new HttpError.BadRequest({ errors: errors.mapped() });
+        }
 
-    (async () => {
-      const results = await db.track.textSearch(q, skip, limit);
+        const { limit, q } = matchedData(req);
 
-      return res.json({
-        length: results.tracks.length,
-        next: createCursor(skip, results.tracks.length, results.total),
-        data: results.tracks
-      });
-    })().catch(next);
-  });
+        const results = await db.track.textSearch(q, 0, limit);
+
+        return res.json({
+          length: results.tracks.length,
+          next: null,// createCursor(0, results.tracks.length, results.total),
+          data: results.tracks
+        });
+      })().catch(next);
+    });
 
 
 router
   .route('/:serviceId')
   .post((req, res, next) => {
     const serviceId = req.params.serviceId;
-    const service = ServiceManager.get(serviceId);
+    const service = serviceManager.get(serviceId);
 
     if (!service) {
       throw new HttpError.NotFound(`${serviceId} is not a service.`);
@@ -45,16 +59,9 @@ router
     form.keepExtensions = true;
 
     form.on('file', async (name, file) => {
-      operationalLogger.debug(`New file uploaded : ${name}\n${JSON.stringify(file)}`);
+      operationalLogger.debug(`New ${name} uploaded : ${JSON.stringify(file)}`);
       (async () => {
-        const track = await service.putTrack({
-          filepath: file.path,
-          type: file.type,
-          size: file.size
-        });
-
-        await track.indexInElastic();
-
+        const track = await service.putTrack(file.path, { size: file.size, mime: file.type, requestId: req.id });
         return res.status(201).json({ track });
       })().catch(next);
     });
@@ -117,13 +124,14 @@ router
 
     (async () => {
       const track = await db.track.findById(id);
-
       if (!track) throw HttpError.NotFound('Track not found.');
+      operationalLogger.info(`Streaming ${track} to client.`);
       const stream = await serviceManager.get(track.service_id).getStream(track);
       if (!stream) throw new HttpError.InternalServerError("Could not load stream.");
       res.set('accept-ranges', 'bytes');
-      res.set('content-type', 'audio/mpeg');
-      res.set('content-length', stream.size);
+      res.set('content-type', mime.lookup(track.format));
+      res.set('content-length', track.size);
+      res.set('content-disposition', `${track.title}.${track.format}`);
 
       stream.pipe(res);
     })().catch(next);

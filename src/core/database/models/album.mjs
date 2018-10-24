@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 import sqlGlobals from './utils/sequelize-globals';
+import sanitize from 'sanitize-filename';
 
 export default function (sequelize) {
   const Album = sequelize.define('album', {
@@ -14,7 +15,8 @@ export default function (sequelize) {
     },
 
     artistId: {
-      type: Sequelize.STRING(25)
+      type: Sequelize.STRING(25),
+      field: 'artist_id'
     }
   }, {
     ...sqlGlobals.defaultOptions
@@ -41,6 +43,10 @@ export default function (sequelize) {
   //     }
   //   });
   // };
+
+  Album.prototype.getSanitizedName = function () {
+    return sanitize(this.name);
+  };
 
   return Album;
 }

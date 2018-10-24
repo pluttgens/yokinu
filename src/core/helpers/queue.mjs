@@ -1,6 +1,26 @@
-import config from 'config';
-import kue from 'kue';
+import _ from 'lodash';
 
-export default kue.createQueue({
-  redis: `redis://${config.yokinu.redis.host}:${config.yokinu.redis.port}`
-});
+export default class Queue {
+  constructor() {
+    this.data = [];
+  }
+
+  next() {
+    return this.data.shift();
+  }
+
+  push(data, { shuffle } = {}) {
+    if (!Array.isArray(data)) {
+      return this.data.push(data);
+    }
+
+    if (shuffle) {
+      data = _.shuffle(data);
+    }
+    data.forEach(e => this.data.push(e));
+  }
+
+  shuffle() {
+    this.data = _.shuffle(this.data);
+  }
+};

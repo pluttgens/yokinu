@@ -10,14 +10,10 @@ export default function (sequelize) {
 
     name: {
       type: Sequelize.STRING,
-      unique: 'playlist__name_service',
       allowNull: false,
       isAlphanumeric: true
     },
     description: {
-      type: Sequelize.STRING
-    },
-    remoteId: {
       type: Sequelize.STRING
     }
   }, {
@@ -35,12 +31,6 @@ export default function (sequelize) {
       },
       as: 'tracks',
       foreignKey: 'playlist_id'
-    });
-
-    this.belongsTo(models.service, {
-      foreignKey: 'service_id',
-      unique: 'playlist__name_service',
-      as: 'service'
     });
   };
 

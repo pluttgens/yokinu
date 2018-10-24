@@ -2,6 +2,7 @@ import config from 'config';
 import Sequelize from 'sequelize';
 import { env, snowflake } from '../helpers/index.mjs';
 import * as Elasticsearch from './elasticsearch';
+import * as Redis from './redis';
 import * as models from './models/index.mjs';
 import { databaseLogger } from '../loggers/index.mjs';
 import { EXIT_CODES } from '../errors/index.mjs';
@@ -40,9 +41,10 @@ async function init() {
   const shouldForceSync = env.shouldForceSync();
   databaseLogger.debug(`syncing database - force : ${shouldForceSync}`);
   try {
-    await Elasticsearch.init();
+    await Elasticsearch.init({shouldForceSync});
+    await Redis.init({shouldForceSync});
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-    await sequelize.sync({ force: shouldForceSync, alter: shouldForceSync });
+    await sequelize.sync({ force: shouldForceSync });
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
   } catch (e) {
     databaseLogger.error(e);
@@ -53,5 +55,7 @@ async function init() {
 export default {
   init,
   sequelize,
-  ...sequelize.models
+  ...sequelize.models,
 };
+
+export const redis = Redis.redis;

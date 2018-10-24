@@ -1,16 +1,18 @@
 import config from 'config';
-// import dropbox from './dropbox/index.mjs';
-import gmusic from './gmusic/index.mjs';
-import local from './local/index.mjs';
+import dropbox from './dropbox/index';
+import gmusic from './gmusic/index';
+import local from './local/index';
+import s3 from './s3/index';
 import Promise from 'bluebird';
 import {operationalLogger} from '../loggers/index.mjs';
 
 class ServiceManager {
   constructor() {
     this._services = {
-      // dropbox,
+      dropbox,
       gmusic,
-      local
+      local,
+      s3
     };
     this.services = {};
     const servicesConf = config.services;
@@ -30,11 +32,15 @@ class ServiceManager {
     return this.services[service];
   }
 
+  list() {
+    return Object.keys(this.services);
+  }
+
   async init() {
     operationalLogger.info(`Initializing services...`);
-    await Promise.all(
-      Object.keys(this.services)
-        .map(serviceName => this.services[serviceName].init())
+    await Promise.each(
+      Object.keys(this.services),
+      serviceName => this.services[serviceName].init()
     );
     operationalLogger.info(`Services initialized.`);
   }

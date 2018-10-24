@@ -1,5 +1,7 @@
-import ServiceManager from './ServiceManager.mjs';
+import serviceManager from './ServiceManager.mjs';
+import serviceToService from './ServiceToService.mjs';
 
 export {
-  ServiceManager
+  serviceManager,
+  serviceToService
 };

@@ -110,6 +110,5 @@ $RECYCLE.BIN/
 
 # Others
 lib/
-data/
 .git
 .gitignore

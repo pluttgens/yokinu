@@ -15,13 +15,14 @@ import { accessLogger, operationalLogger } from './core/loggers/index.mjs';
 import livestream from './core/livestream/index.mjs';
 import {
   authenticationRoutes,
+  jobRoutes,
   livestreamRoutes,
   playlistsRoutes,
   servicesRoutes,
   tracksRoutes,
   usersRoutes
 } from './core/routes/index';
-import { ServiceManager } from './core/services/index.mjs';
+import { serviceManager } from './core/services/index.mjs';
 import { ensureDirs, params } from './core/helpers/index';
 import HttpError from 'http-errors';
 
@@ -31,7 +32,7 @@ morgan.token('body', req => req.method === 'POST' ? JSON.stringify(params.remove
 (async () => {
   await database.init();
   await ensureDirs();
-  await ServiceManager.init();
+  await serviceManager.init();
 
   if (config.yokinu.livestream.autoStart)
     await livestream.startStream();
@@ -60,6 +61,7 @@ morgan.token('body', req => req.method === 'POST' ? JSON.stringify(params.remove
   app.use(app.locals.static.covers, express.static(path.join(config.yokinu.temp_data, 'covers')));
 
   app.use(apiPrefix + '/authentications', authenticationRoutes);
+  app.use(apiPrefix + '/jobs', jwtAuth(), jobRoutes);
   app.use(apiPrefix + '/livestream', jwtAuth(), livestreamRoutes);
   app.use(apiPrefix + '/playlists', jwtAuth(), playlistsRoutes);
   app.use(apiPrefix + '/services', jwtAuth(), servicesRoutes);

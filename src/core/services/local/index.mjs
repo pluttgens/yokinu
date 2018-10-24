@@ -3,28 +3,21 @@ import db from '../../database/index.mjs';
 import fs from 'fs-extra';
 import deleteEmpty from 'delete-empty';
 import { operationalLogger } from '../../loggers/index.mjs';
-import { EXIT_CODES } from '../../errors/index.mjs'
 import path from 'path';
 import glob from 'glob-promise';
-import sanitize from 'sanitize-filename';
+import InvalidTrackInputError from '../errors/InvalidTrackInputError';
 
 export default class LocalService extends BaseService {
-  constructor(config) {
-    super('local', config);
+  constructor(serviceConfig) {
+    super('local', serviceConfig);
 
     this.androidId = null;
     this.masterToken = null;
   }
 
-  async init() {
-    super.init();
-    try {
-      await fs.mkdirs(this.config.data_dir);
-      operationalLogger.info(`Service ${this.name} initialized.`)
-    } catch (e) {
-      operationalLogger.error(e);
-      process.exit(EXIT_CODES.SERVICE_ERROR)
-    }
+  async _init() {
+    await fs.mkdirs(this.config.dataDir);
+    operationalLogger.info(`Service ${this.name} initialized.`)
   }
 
   registerRoutes(router) {
@@ -45,7 +38,7 @@ export default class LocalService extends BaseService {
           operationalLogger.info(`Processing new local file : ${file}`);
           try {
             const { size } = await fs.stat(file);
-            return this.putTrack({ filepath: file, size });
+            return this.putFile({ filepath: file, size });
           } catch (err) {
             operationalLogger.error(err);
           }
@@ -61,28 +54,46 @@ export default class LocalService extends BaseService {
     return stream;
   }
 
-  async putTrack({ filepath, mime, size }) {
-    const transaction = await db.sequelize.transaction();
-    try {
-      const track = await db.track.fromFile(this.name, filepath, mime, size);
-      const artist = await track.getArtist({ transaction });
-      const album = await track.getAlbum({ transaction });
-      const newDir = path.join(this.config.data_dir, sanitize(artist.name), sanitize(album.name));
-      await fs.ensureDir(newDir);
-      const newPath = path.join(newDir, sanitize(track.title) + path.extname(track.path));
-      operationalLogger.debug(`Moving ${track.path} to ${newDir}`);
-      await fs.move(track.path, newPath, { overwrite: true });
-      track.path = newPath;
-      await track.save({ transaction });
-      await transaction.commit();
-      return track;
-    } catch (err) {
-      await transaction.rollback();
-      throw err;
-    }
+  async _putTrack(input, track, transaction) {
+    const stream = this._createReadStream(input);
+    const newDir = path.join(this.config.dataDir, await track.getFsPath({
+      includeTitle: false,
+      includeFormat: false,
+      join: true,
+      transaction
+    }));
+    await fs.ensureDir(newDir);
+
+    let discriminant = 0;
+    let free = false;
+    do {
+      track.path = path.join(this.config.dataDir, await track.getFsPath({
+        includeTitle: true,
+        includeFormat: true,
+        discriminant,
+        join: true,
+        transaction
+      }));
+
+      try {
+        await fs.access(track.path);
+        free = false;
+        operationalLogger.debug(`${track.path} already exists.`);
+        ++discriminant;
+      } catch (err) {
+        free = true
+      }
+    } while (!free && discriminant < 99);
+
+    if (!free) throw InvalidTrackInputError('Cannot upload the same song 100 times.');
+
+    operationalLogger.debug(`Piping to ${track.path}`);
+    stream.pipe(fs.createWriteStream(track.path));
+    return track;
   }
 
-  getBatchSize() {
-    return super.getBatchSize();
+  async cleanup() {
+    await fs.remove(this.config.dataDir);
   }
 }
+
