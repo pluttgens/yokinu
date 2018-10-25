@@ -5,10 +5,11 @@ import liveStream from '../livestream/index.mjs';
 import Check from 'express-validator/check';
 import Filter from 'express-validator/filter';
 import { operationalLogger } from '../loggers/index.mjs';
+import db from '../database/index';
 
 const router = express.Router();
 
-const { check, checkSchema, validationResult } = Check;
+const { check, param, checkSchema, validationResult } = Check;
 const { matchedData } = Filter;
 
 const HLS_EXTS = {
@@ -46,12 +47,12 @@ router
   });
 
 router
-  .route('/tracks')
+  .route('/tracks/:trackId')
   .get(checkSchema({}), (req, res, next) => {
     res.json({ tracks: liveStream.queue.data });
   })
   .post([
-    check('id')
+    param('trackId')
   ], (req, res, next) => {
     (async () => {
       const errors = validationResult(req);
@@ -59,9 +60,43 @@ router
         throw new HttpError.BadRequest({ errors: errors.mapped() });
       }
 
-      const { id } = matchedData(req);
-      const track = await liveStream.queueTrack(id);
+      const { trackId } = matchedData(req);
+
+      const track = await db.track.findById(trackId, {
+        include: [
+          { model: db.artist, as: 'artist' },
+          { model: db.album, as: 'album' },
+          { model: db.genre, as: 'genres' }
+        ]
+      });
       if (!track) throw new HttpError.NotFound('No track found for that id.');
+      await liveStream.queueTrack(track);
+      return res.json({ tracks: liveStream.queue });
+    })().catch(next);
+  });
+
+router
+  .route('/playlists/:playlistId')
+  .get(checkSchema({}), (req, res, next) => {
+    res.json({ tracks: liveStream.queue.data });
+  })
+  .post([
+    param('playlistId')
+  ], (req, res, next) => {
+    (async () => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        throw new HttpError.BadRequest({ errors: errors.mapped() });
+      }
+
+      const { playlistId } = matchedData(req);
+      const playlist = await db.playlist.findById(playlistId, {
+        include: [
+          { model: db.track, as: 'tracks' }
+        ]
+      });
+      if (!playlist) throw new HttpError.NotFound('No playlist found for that id.');
+      await liveStream.queuePlaylist(playlist);
       return res.json({ tracks: liveStream.queue });
     })().catch(next);
   });

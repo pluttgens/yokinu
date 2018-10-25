@@ -35,26 +35,30 @@ export default class File {
   }
 
   static async fromStream(stream) {
+    const file = await File.streamToTemporaryFile(stream);
+    const filePath = file.path;
+    const mime = (await magicAsync(fs.createReadStream(file.path)))[0].type;
+    const size = (await fs.stat(file.path)).size;
+    return File.fromFile({filePath, mime, size});
+  }
+
+  static async streamToTemporaryFile(stream) {
     const file = await tmp.file({
       dir: config.yokinu.temp_dir,
       prefix: `download-`,
       keep: true
     });
+    operationalLogger.debug(`Creating new temporary file ${file.path}`);
 
-    await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       stream
         .pipe(fs.createWriteStream(file.path))
         .on('finish', () => {
           operationalLogger.debug(`Wrote stream to ${file.path}`);
-          resolve();
+          resolve(file);
         })
         .on('error', reject);
     });
-
-    const filePath = file.path;
-    const mime = (await magicAsync(fs.createReadStream(file.path)))[0].type;
-    const size = (await fs.stat(file.path)).size;
-    return File.fromFile({filePath, mime, size});
   }
 
   getExt() {

@@ -95,5 +95,9 @@ export default class LocalService extends BaseService {
   async cleanup() {
     await fs.remove(this.config.dataDir);
   }
+
+  isLocal() {
+    return true;
+  }
 }
 

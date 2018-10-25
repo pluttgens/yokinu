@@ -83,15 +83,23 @@ router
   .get([
       param('playlistId')
     ],
-    (req, rest, next) => {
+    (req, res, next) => {
+      (async () => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          throw new HttpError.BadRequest({ errors: errors.mapped() });
+        }
 
-    })
-  .put([
-      param('playlistId'),
-      body('trackId')
-    ],
-    (req, rest, next) => {
+        const { playlistId } = matchedData(req);
+        const playlist = await db.playlist.findById(playlistId);
+        if (!playlist) {
+          throw new HttpError(404, 'No playlist found.');
+        }
 
+        return res.json({
+          data: await playlist.getTracks()
+        })
+      })().catch(next);
     });
 
 router

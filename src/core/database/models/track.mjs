@@ -11,6 +11,7 @@ import { elasticsearch } from '../elasticsearch.mjs';
 import { operationalLogger } from '../../loggers/index.mjs';
 import service from './service.mjs';
 import { serviceManager } from '../../services';
+import {File} from '../../helpers';
 
 const Op = Sequelize.Op;
 
@@ -396,11 +397,21 @@ export default function (sequelize) {
     return `[${this.id}] ${this.title}`;
   };
 
-  Track.prototype.migrateTo = function (serviceId) {
-    const service = serviceManager.get(serviceId);
+  Track.prototype.getLocalTemporaryFile = async function() {
+    const service = serviceManager.get(this.serviceId);
+    operationalLogger.info(`Downloading temporary file for ${this} from ${service.name}`);
+    if (service.isLocal()) {
+      operationalLogger.debug(`Service is local.`);
+      return {
+        path: this.path,
+        async cleanup() {}
+      };
+    }
 
-
+    const stream = await service.getStream(this);
+    return File.streamToTemporaryFile(stream);
   };
+
 
   Track.SUPPORTED_FORMATS = {
     MP3: 'mp3',

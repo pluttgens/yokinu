@@ -142,4 +142,8 @@ export default class BaseService {
   async _cleanup() {
 
   }
+
+  isLocal() {
+    return false;
+  }
 }

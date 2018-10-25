@@ -5,7 +5,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import Promise from 'bluebird';
 import glob from 'glob-promise';
 import db from '../database/index.mjs';
-import { Queue } from '../helpers/index.mjs';
+import { File, Queue } from '../helpers/index.mjs';
 import { operationalLogger } from '../loggers/index.mjs';
 import Sequelize from 'sequelize';
 
@@ -50,15 +50,7 @@ class LiveStream {
     return this.isPlaying && !this.queue.length;
   }
 
-  async queueTrack({ id, options = {} }) {
-    const track = await db.track.findById(id, {
-      include: [
-        { model: db.artist, as: 'artist' },
-        { model: db.album, as: 'album' },
-        { model: db.genre, as: 'genres' }
-      ]
-    });
-
+  async queueTrack(track, options = {}) {
     const shouldPlay = this.shouldPlay;
     this.queue.push(track, options);
     if (shouldPlay) {
@@ -85,33 +77,17 @@ class LiveStream {
     return tracks;
   }
 
-  async queueTracks({ ids, options = {} }) {
-    const tracks = await db.findAll({
-      where: {
-        id: {
-          [Op.in]: ids
-        }
-      },
-      include: [
-        { model: db.artist, as: 'artist' },
-        { model: db.album, as: 'album' },
-        { model: db.genre, as: 'genres' }
-      ]
-    });
+  async queuePlaylist(playlist) {
+    const tracks = await playlist.getTracks();
 
-    const shouldPlay = this.shouldPlay;
-    this.queue.push(tracks, options);
-    if (shouldPlay) {
-      await this.startStream();
-    }
-    return tracks;
+    return Promise
+      .map(
+        tracks,
+        async track => this.queueTrack(track)
+      );
   }
 
-  async queuePlaylist(id) {
-    const playlist = await db.playlist.findById(id);
-  }
-
-  play() {
+  async play() {
     const track = this.queue.next();
     if (!track) {
       this.isPlaying = false;
@@ -121,7 +97,8 @@ class LiveStream {
     operationalLogger.debug(log(`path : ${track.path}`));
 
     this.current = track;
-    this.command = ffmpeg(track.path)
+    const file = await track.getLocalTemporaryFile();
+    this.command = ffmpeg(file.path)
       .noVideo()
       .native()
       .outputFormat('hls')
@@ -136,6 +113,7 @@ class LiveStream {
       .on('end', () => {
         operationalLogger.debug('ffmpeg end');
         this.setCleanup(track);
+        file.cleanup()
         return this.play();
       })
       .on('progress', progress => {
@@ -145,6 +123,7 @@ class LiveStream {
         operationalLogger.debug('ffmpeg error');
         operationalLogger.error(err);
         this.setCleanup(track);
+        file.cleanup()
         return this.play();
       })
       .save(path.join(HLS.directory, 'index.m3u8'));
