@@ -41,7 +41,7 @@ services:
       - NODE_ENV=development
   yknelasticsearch:
     restart: always
-    image: elasticsearch:latest
+    image: elasticsearch:6.4.2
     ports:
       - "9201:9200"
       - "9301:9300"
