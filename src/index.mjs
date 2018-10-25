@@ -58,7 +58,7 @@ morgan.token('body', req => req.method === 'POST' ? JSON.stringify(params.remove
     covers: '/static/covers',
   };
 
-  app.use(app.locals.static.covers, express.static(path.join(config.yokinu.temp_data, 'covers')));
+  app.use(app.locals.static.covers, express.static(path.join(config.storage.temp_data, 'covers')));
 
   app.use(apiPrefix + '/authentications', authenticationRoutes);
   app.use(apiPrefix + '/jobs', jwtAuth(), jobRoutes);
@@ -78,7 +78,7 @@ morgan.token('body', req => req.method === 'POST' ? JSON.stringify(params.remove
     res.status(err.status).json(err);
   });
 
-  const port = config.yokinu.port;
+  const port = config.port;
   const server = http.createServer(app);
   server.listen(port);
   console.log('listening on port ' + port);
